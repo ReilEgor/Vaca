@@ -1,0 +1,16 @@
+package domain
+
+import (
+	"errors"
+)
+
+var (
+	ErrTaskNotFound       = errors.New("task not found")
+	ErrFailedToCreateTask = errors.New("failed to create task")
+	ErrTaskAlreadyExists  = errors.New("task already exists")
+
+	ErrInvalidSource     = errors.New("invalid or unsupported source")
+	ErrSourceUnavailable = errors.New("source is temporarily unavailable")
+
+	ErrInvalidKeywords = errors.New("keywords cannot be empty")
+)
