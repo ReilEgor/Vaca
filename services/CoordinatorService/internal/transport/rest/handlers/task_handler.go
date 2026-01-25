@@ -12,14 +12,14 @@ import (
 )
 
 type CreateTaskRequest struct {
-	Keywords []string `json:"keywords" binding:"required,gt=0"`
-	Sources  []string `json:"sources" binding:"required,gt=0"`
+	Keywords []string `json:"keywords" binding:"required,dive"`
+	Sources  []string `json:"sources" binding:"required,dive"`
 }
 
 type CreateTaskResponse struct {
-	TaskID    uuid.UUID `json:"task_id"`
-	Status    string    `json:"status"`
-	CreatedAt string    `json:"created_at"`
+	TaskID    uuid.UUID `json:"task_id" binding:"required"`
+	Status    string    `json:"status" binding:"required"`
+	CreatedAt string    `json:"created_at" binding:"required"`
 }
 
 func (h *Handler) GetTaskStatus(c *gin.Context) {
