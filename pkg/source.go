@@ -9,6 +9,7 @@ import (
 type Source struct {
 	ID       uuid.UUID `json:"id"`
 	Name     string    `json:"name"`
+	URL      string    `json:"url"`
 	IsActive bool      `json:"is_active"`
 }
 

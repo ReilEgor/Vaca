@@ -9,6 +9,8 @@ var (
 	ErrFailedToCreateTask = errors.New("failed to create task")
 	ErrTaskAlreadyExists  = errors.New("task already exists")
 
+	ErrFailedToGetSources = errors.New("failed to get sources")
+
 	ErrInvalidSource     = errors.New("invalid or unsupported source")
 	ErrSourceUnavailable = errors.New("source is temporarily unavailable")
 
