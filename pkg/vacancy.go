@@ -1,14 +1,18 @@
 package pkg
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type Vacancy struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Link        string `json:"link"`
-	Company     string `json:"company"`
-	Salary      string `json:"salary"`
+	ID          uuid.UUID `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Link        string    `json:"link"`
+	Company     string    `json:"company"`
+	Salary      string    `json:"salary"`
 }
 type VacancyFilter struct {
 	Query     string

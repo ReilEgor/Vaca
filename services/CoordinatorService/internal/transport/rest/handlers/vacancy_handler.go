@@ -7,19 +7,20 @@ import (
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type VacancyResponse struct {
-	ID      string `json:"id"`
-	Title   string `json:"title"`
-	Company string `json:"company"`
-	Salary  string `json:"salary"`
-	Link    string `json:"link"`
+	ID      uuid.UUID `json:"id" binding:"required"`
+	Title   string    `json:"title" binding:"required,min=3"`
+	Company string    `json:"company" binding:"required"`
+	Salary  string    `json:"salary,omitempty"`
+	Link    string    `json:"link" binding:"required,url"`
 }
 
 type SearchVacanciesResponse struct {
-	Items []VacancyResponse `json:"items"`
-	Total int64             `json:"total"`
+	Items []VacancyResponse `json:"items" binding:"required,dive"`
+	Total int64             `json:"total" binding:"required,gte=0" `
 }
 
 func (h *Handler) GetVacancies(c *gin.Context) {
