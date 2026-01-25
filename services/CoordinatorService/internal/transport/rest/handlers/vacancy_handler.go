@@ -20,7 +20,7 @@ type VacancyResponse struct {
 
 type SearchVacanciesResponse struct {
 	Items []VacancyResponse `json:"items" binding:"required,dive"`
-	Total int64             `json:"total" binding:"required,gte=0" `
+	Total int64             `json:"total" binding:"required,gte=0"`
 }
 
 func (h *Handler) GetVacancies(c *gin.Context) {
