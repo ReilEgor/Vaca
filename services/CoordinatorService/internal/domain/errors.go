@@ -11,6 +11,8 @@ var (
 
 	ErrFailedToGetSources = errors.New("failed to get sources")
 
+	ErrFailedToGetVacancies = errors.New("failed to get vacancies")
+
 	ErrInvalidSource     = errors.New("invalid or unsupported source")
 	ErrSourceUnavailable = errors.New("source is temporarily unavailable")
 
