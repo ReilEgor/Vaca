@@ -7,10 +7,12 @@
 package main
 
 import (
+	"github.com/ReilEgor/Vaca/services/CoordinatorService/config"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest/handlers"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/usecase"
+	"github.com/ReilEgor/Vaca/services/CoordinatorService/repository/redis"
 	"github.com/google/wire"
 )
 
@@ -21,11 +23,18 @@ import (
 // Injectors from wire.go:
 
 func InitializeApp() (*App, func(), error) {
-	coordinatorInteractor := usecase.NewCoordinatorUsecase()
+	configConfig := config.NewConfig()
+	client, err := redis.NewRedisClient(configConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+	statusRepository := redis.NewRedisTokenRepository(client)
+	coordinatorInteractor := usecase.NewCoordinatorUsecase(statusRepository)
 	ginServer := rest.NewGinServer(coordinatorInteractor)
 	app := &App{
-		Logic:  coordinatorInteractor,
-		Server: ginServer,
+		Logic:      coordinatorInteractor,
+		Server:     ginServer,
+		Repository: statusRepository,
 	}
 	return app, func() {
 	}, nil
@@ -37,7 +46,10 @@ var UsecaseSet = wire.NewSet(usecase.NewCoordinatorUsecase, wire.Bind(new(domain
 
 var RestSet = wire.NewSet(rest.NewGinServer, handler.NewHandler)
 
+var InfraSet = wire.NewSet(config.NewConfig, redis.NewRedisClient, redis.NewRedisTokenRepository)
+
 type App struct {
-	Logic  domain.CoordinatorUsecase
-	Server *rest.GinServer
+	Logic      domain.CoordinatorUsecase
+	Server     *rest.GinServer
+	Repository domain.StatusRepository
 }
