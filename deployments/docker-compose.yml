@@ -20,7 +20,8 @@ services:
     image: redis:7-alpine
     restart: always
     ports:
-      - "${REDIS_PORT}:${REDIS_PORT}"
+      - "${REDIS_PORT}:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     healthcheck:
@@ -74,9 +75,13 @@ services:
     ports:
       - "${HTTP_PORT}:8080"
     environment:
+      - HTTP_PORT=${HTTP_PORT}
       - RABBIT_URL=${RABBIT_URL}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
 
   dataprocessor-service:
     build:
