@@ -62,7 +62,7 @@ func (h *Handler) CreateTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, CreateTaskResponse{
-		TaskID:    taskID,
+		TaskID:    *taskID,
 		Status:    "created",
 		CreatedAt: time.Now().Format(time.RFC3339),
 	})
