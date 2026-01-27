@@ -19,12 +19,14 @@ type CoordinatorInteractor struct {
 	//TODO: Add dependencies
 	logger     *slog.Logger
 	statusRepo domain.StatusRepository
+	broker     domain.TaskPublisher
 }
 
-func NewCoordinatorUsecase(sr domain.StatusRepository) *CoordinatorInteractor {
+func NewCoordinatorUsecase(sr domain.StatusRepository, br domain.TaskPublisher) *CoordinatorInteractor {
 	return &CoordinatorInteractor{
 		statusRepo: sr,
 		logger:     slog.With(slog.String("component", "coordinator_uc")),
+		broker:     br,
 	}
 }
 
@@ -66,6 +68,21 @@ func (uc *CoordinatorInteractor) CreateTask(ctx context.Context, keywords []stri
 		//TODO: return proper error
 		return nil, domain.ErrTaskNotFound
 	}
+
+	for _, source := range sources {
+		rKey := "scraper." + source
+
+		msg := outPkg.ScrapeTask{
+			ID:      taskID,
+			Keyword: keywords,
+			Source:  source,
+		}
+
+		if err := uc.broker.PublishTask(ctx, msg, rKey); err != nil {
+			uc.logger.Error("failed to send task", slog.String("source", source))
+		}
+	}
+
 	return &taskID, nil
 }
 

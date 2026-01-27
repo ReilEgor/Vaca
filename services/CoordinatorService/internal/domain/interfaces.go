@@ -22,3 +22,8 @@ type StatusRepository interface {
 	Get(ctx context.Context, taskID string) (string, error)
 	GetIDByHash(ctx context.Context, searchKey string) (string, error)
 }
+
+//go:generate mockery --name TaskPublisher --output ../mocks/domain --outpkg domain --case=underscore
+type TaskPublisher interface {
+	PublishTask(ctx context.Context, taskMessage outPkg.ScrapeTask, routingKey string) error
+}

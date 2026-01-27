@@ -17,6 +17,18 @@ type Task struct {
 	UpdatedAt        time.Time `json:"updated_at"`
 }
 
+// RabbitMQ message structure
+type TaskMessage struct {
+	TaskID   uuid.UUID
+	Keywords []string
+	Sources  []string
+}
+type ScrapeTask struct {
+	ID      uuid.UUID
+	Keyword []string
+	Source  string
+}
+
 type TaskRepository interface {
 	CreateTask(ctx context.Context, task *Task) error
 	GetTaskByID(ctx context.Context, id uuid.UUID) (*Task, error)

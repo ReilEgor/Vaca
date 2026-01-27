@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
-	_ "github.com/ReilEgor/Vaca/pkg"
-	"github.com/joho/godotenv"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	_ "github.com/ReilEgor/Vaca/pkg"
+	outPkg "github.com/ReilEgor/Vaca/pkg"
+	rabbitmq "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/broker/rabbitmq"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -18,7 +21,10 @@ func main() {
 		slog.Warn("no .env file found, using system environment variables")
 	}
 
-	app, cleanup, err := InitializeApp()
+	taskQueue := rabbitmq.PublisherQueueName(outPkg.RabbitMQTaskQueue)
+	rabbitURL := os.Getenv("RABBIT_URL")
+
+	app, cleanup, err := InitializeApp(rabbitmq.RabbitURL(rabbitURL), taskQueue)
 	if err != nil {
 		logger.Error("failed to initialize app", slog.Any("error", err))
 		os.Exit(1)
