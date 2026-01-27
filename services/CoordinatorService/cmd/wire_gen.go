@@ -8,6 +8,7 @@ package main
 
 import (
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/config"
+	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/broker/rabbitmq"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest/handlers"
@@ -22,14 +23,24 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeApp() (*App, func(), error) {
+func InitializeApp(rabbitURL rabbitmq.RabbitURL, taskQueue rabbitmq.PublisherQueueName) (*App, func(), error) {
 	configConfig := config.NewConfig()
 	client, err := redis.NewRedisClient(configConfig)
 	if err != nil {
 		return nil, nil, err
 	}
 	statusRepository := redis.NewRedisTokenRepository(client)
-	coordinatorInteractor := usecase.NewCoordinatorUsecase(statusRepository)
+	connection, cleanup, err := rabbitmq.NewRabbitMQConn(rabbitURL)
+	if err != nil {
+		return nil, nil, err
+	}
+	channel, cleanup2, err := rabbitmq.NewRabbitMQChannel(connection)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	publisher := rabbitmq.NewPublisher(channel, taskQueue)
+	coordinatorInteractor := usecase.NewCoordinatorUsecase(statusRepository, publisher)
 	ginServer := rest.NewGinServer(coordinatorInteractor)
 	app := &App{
 		Logic:      coordinatorInteractor,
@@ -37,6 +48,8 @@ func InitializeApp() (*App, func(), error) {
 		Repository: statusRepository,
 	}
 	return app, func() {
+		cleanup2()
+		cleanup()
 	}, nil
 }
 
@@ -45,6 +58,8 @@ func InitializeApp() (*App, func(), error) {
 var UsecaseSet = wire.NewSet(usecase.NewCoordinatorUsecase, wire.Bind(new(domain.CoordinatorUsecase), new(*usecase.CoordinatorInteractor)))
 
 var RestSet = wire.NewSet(rest.NewGinServer, handler.NewHandler)
+
+var BrokerSet = wire.NewSet(rabbitmq.NewRabbitMQConn, rabbitmq.NewRabbitMQChannel, rabbitmq.NewPublisher, wire.Bind(new(domain.TaskPublisher), new(*rabbitmq.Publisher)))
 
 var InfraSet = wire.NewSet(config.NewConfig, redis.NewRedisClient, redis.NewRedisTokenRepository)
 
