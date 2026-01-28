@@ -18,5 +18,5 @@ type TaskSubscriber interface {
 
 //go:generate mockery --name ResultPublisher --output ../mocks/domain --outpkg domain --case=underscore
 type ResultPublisher interface {
-	PublishResults(ctx context.Context, results outPkg.ScrapeResult) error
+	PublishResults(ctx context.Context, vacancy []outPkg.Vacancy) error
 }

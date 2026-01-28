@@ -20,8 +20,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeApp(rabbitURL rabbitmq.RabbitURL, qName rabbitmq.SubscriberQueueName, rKey rabbitmq.SubscriberRoutingKey, exch rabbitmq.SubscriberExchange, logger *slog.Logger) (*App, func(), error) {
-	douInteractor := usecase.NewDouInteractor()
+func InitializeApp(rabbitURL rabbitmq.RabbitURL, qName rabbitmq.SubscriberQueueName, rKey rabbitmq.SubscriberRoutingKey, exch rabbitmq.SubscriberExchange, publishQName rabbitmq.PublisherQueueName, logger *slog.Logger) (*App, func(), error) {
 	connection, cleanup, err := rabbitmq.NewRabbitMQConn(rabbitURL)
 	if err != nil {
 		return nil, nil, err
@@ -31,6 +30,8 @@ func InitializeApp(rabbitURL rabbitmq.RabbitURL, qName rabbitmq.SubscriberQueueN
 		cleanup()
 		return nil, nil, err
 	}
+	publisher := rabbitmq.NewPublisher(channel, publishQName)
+	douInteractor := usecase.NewDouInteractor(publisher)
 	taskSubscriber := rabbitmq.NewTaskSubscriber(channel, douInteractor, logger, qName, rKey, exch)
 	app := &App{
 		Logic:      douInteractor,
@@ -46,7 +47,7 @@ func InitializeApp(rabbitURL rabbitmq.RabbitURL, qName rabbitmq.SubscriberQueueN
 
 var UsecaseSet = wire.NewSet(usecase.NewDouInteractor, wire.Bind(new(domain.ScraperUsecase), new(*usecase.DouInteractor)))
 
-var BrokerSet = wire.NewSet(rabbitmq.NewRabbitMQConn, rabbitmq.NewRabbitMQChannel, rabbitmq.NewTaskSubscriber, wire.Bind(new(domain.TaskSubscriber), new(*rabbitmq.TaskSubscriber)))
+var BrokerSet = wire.NewSet(rabbitmq.NewRabbitMQConn, rabbitmq.NewRabbitMQChannel, rabbitmq.NewPublisher, rabbitmq.NewTaskSubscriber, wire.Bind(new(domain.TaskSubscriber), new(*rabbitmq.TaskSubscriber)), wire.Bind(new(domain.ResultPublisher), new(*rabbitmq.Publisher)))
 
 type App struct {
 	Logic      domain.ScraperUsecase

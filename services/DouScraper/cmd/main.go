@@ -30,6 +30,7 @@ func main() {
 		rabbitmq.SubscriberQueueName("dou_tasks"),
 		rabbitmq.SubscriberRoutingKey("scraper.dou.ua"),
 		rabbitmq.SubscriberExchange(outPkg.RabbitMQExchangeName),
+		rabbitmq.PublisherQueueName(outPkg.RabbitMQVacancyQueue),
 		logger,
 	)
 	if err != nil {

@@ -9,16 +9,19 @@ import (
 	"time"
 
 	outPkg "github.com/ReilEgor/Vaca/pkg"
+	"github.com/ReilEgor/Vaca/services/DouScraper/internal/broker/rabbitmq"
 	"github.com/gocolly/colly"
 )
 
 type DouInteractor struct {
-	logger *slog.Logger
+	logger    *slog.Logger
+	publisher *rabbitmq.Publisher
 }
 
-func NewDouInteractor() *DouInteractor {
+func NewDouInteractor(publisher *rabbitmq.Publisher) *DouInteractor {
 	return &DouInteractor{
-		logger: slog.With(slog.String("component", "scheduler")),
+		logger:    slog.With(slog.String("component", "scheduler")),
+		publisher: publisher,
 	}
 }
 
@@ -82,5 +85,10 @@ func (i *DouInteractor) Execute(ctx context.Context, task outPkg.ScrapeTask) err
 	i.logger.Info("finished scraping", slog.Int("total", len(foundVacancies)))
 
 	fmt.Printf("%+v\n", foundVacancies)
+
+	err = i.publisher.PublishResults(ctx, foundVacancies)
+	if err != nil {
+		return err
+	}
 	return nil
 }
