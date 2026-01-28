@@ -20,8 +20,11 @@ var UsecaseSet = wire.NewSet(
 var BrokerSet = wire.NewSet(
 	rabbitmq.NewRabbitMQConn,
 	rabbitmq.NewRabbitMQChannel,
+	rabbitmq.NewPublisher,
 	rabbitmq.NewTaskSubscriber,
+
 	wire.Bind(new(domain.TaskSubscriber), new(*rabbitmq.TaskSubscriber)),
+	wire.Bind(new(domain.ResultPublisher), new(*rabbitmq.Publisher)),
 )
 
 type App struct {
@@ -34,6 +37,7 @@ func InitializeApp(
 	qName rabbitmq.SubscriberQueueName,
 	rKey rabbitmq.SubscriberRoutingKey,
 	exch rabbitmq.SubscriberExchange,
+	publishQName rabbitmq.PublisherQueueName,
 	logger *slog.Logger,
 ) (*App, func(), error) {
 	wire.Build(
