@@ -2,5 +2,5 @@ package pkg
 
 const (
 	RabbitMQTaskQueue    = "task_queue"
-	RabbitMQExchangeName = "task_exchange"
+	RabbitMQExchangeName = "tasks_direct"
 )
