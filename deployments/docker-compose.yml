@@ -96,6 +96,17 @@ services:
       - DB_SOURCE=${DATA_PROCESSOR_DB_URL}
       - RABBIT_URL=${RABBIT_URL}
 
+  dou-scraper:
+    build:
+      context: ..
+      dockerfile: services/DouScraper/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - RABBIT_URL=${RABBIT_URL}
 volumes:
   postgres_data:
   redis_data:
