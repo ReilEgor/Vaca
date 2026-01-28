@@ -7,12 +7,15 @@ import (
 )
 
 type Vacancy struct {
-	ID          uuid.UUID `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Link        string    `json:"link"`
-	Company     string    `json:"company"`
-	Salary      string    `json:"salary"`
+	ID           uuid.UUID `json:"id"`
+	Title        string    `json:"title"`
+	Description  string    `json:"description"`
+	Link         string    `json:"link"`
+	Company      string    `json:"company"`
+	Salary       string    `json:"salary"`
+	City         string    `json:"city"`
+	Requirements string    `json:"requirements"`
+	About        string    `json:"about"`
 }
 type VacancyFilter struct {
 	Query     string
