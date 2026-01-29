@@ -95,6 +95,11 @@ services:
     environment:
       - DB_SOURCE=${DATA_PROCESSOR_DB_URL}
       - RABBIT_URL=${RABBIT_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
 
   dou-scraper:
     build:

@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
-	"fmt"
 	"log/slog"
 	"sort"
 	"strings"
@@ -31,13 +30,13 @@ func NewCoordinatorUsecase(sr domain.StatusRepository, br domain.TaskPublisher) 
 }
 
 func (uc *CoordinatorInteractor) GetTaskStatus(ctx context.Context, taskID string) (*outPkg.Task, error) {
-	status, err := uc.statusRepo.Get(ctx, taskID)
-	if err != nil {
-		uc.logger.Error("failed to get status from repo", slog.Any("error", err))
+	ans := uc.statusRepo.Get(ctx, taskID)
+	status, ok := ans["status"]
+	if !ok {
+		uc.logger.Error("status not found in repo", slog.String("task_id", taskID))
 		return nil, domain.ErrTaskNotFound
 	}
 
-	fmt.Printf("status: %s, err: %v\n", status, err)
 	parsedID, err := uuid.Parse(taskID)
 	if err != nil {
 		uc.logger.Error("failed to parse task ID", slog.String("task_id", taskID), slog.Any("error", err))
@@ -61,7 +60,7 @@ func (uc *CoordinatorInteractor) CreateTask(ctx context.Context, keywords []stri
 	}
 
 	taskID := uuid.New()
-	err = uc.statusRepo.Set(ctx, taskID.String(), searchKey, "created", time.Minute*10)
+	err = uc.statusRepo.Set(ctx, taskID.String(), searchKey, len(sources), time.Minute*10)
 	if err != nil {
 		//TODO: create status constants
 		uc.logger.Error("failed to set status from repo", slog.Any("error", err))

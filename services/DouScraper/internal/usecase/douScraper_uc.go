@@ -20,7 +20,7 @@ type DouInteractor struct {
 
 func NewDouInteractor(publisher *rabbitmq.Publisher) *DouInteractor {
 	return &DouInteractor{
-		logger:    slog.With(slog.String("component", "scheduler")),
+		logger:    slog.With(slog.String("component", "DouInteractor")),
 		publisher: publisher,
 	}
 }
@@ -86,7 +86,11 @@ func (i *DouInteractor) Execute(ctx context.Context, task outPkg.ScrapeTask) err
 
 	fmt.Printf("%+v\n", foundVacancies)
 
-	err = i.publisher.PublishResults(ctx, foundVacancies)
+	result := outPkg.ScrapeResult{
+		TaskID:    task.ID,
+		Vacancies: foundVacancies,
+	}
+	err = i.publisher.PublishResults(ctx, result)
 	if err != nil {
 		return err
 	}

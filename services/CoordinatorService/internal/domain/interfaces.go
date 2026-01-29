@@ -18,8 +18,8 @@ type CoordinatorUsecase interface {
 
 //go:generate mockery --name StatusRepository --output ../mocks/domain --outpkg domain --case=underscore
 type StatusRepository interface {
-	Set(ctx context.Context, taskID string, searchKey, status string, ttl time.Duration) error
-	Get(ctx context.Context, taskID string) (string, error)
+	Set(ctx context.Context, taskID string, searchKey string, totalSources int, ttl time.Duration) error
+	Get(ctx context.Context, taskID string) map[string]string
 	GetIDByHash(ctx context.Context, searchKey string) (string, error)
 }
 

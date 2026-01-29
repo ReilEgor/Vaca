@@ -20,7 +20,7 @@ type Publisher struct {
 func NewPublisher(ch *amqp.Channel, queue PublisherQueueName) *Publisher {
 	return &Publisher{ch: ch, queue: queue, logger: slog.With(slog.String("component", "publisher"))}
 }
-func (p *Publisher) PublishResults(ctx context.Context, vacancy []outPkg.Vacancy) error {
+func (p *Publisher) PublishResults(ctx context.Context, vacancy outPkg.ScrapeResult) error {
 	_, err := p.ch.QueueDeclare(
 		string(p.queue),
 		true,
