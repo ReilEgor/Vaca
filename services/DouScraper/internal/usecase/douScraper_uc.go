@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/DouScraper/internal/broker/rabbitmq"
 	"github.com/gocolly/colly"
@@ -25,74 +27,93 @@ func NewDouInteractor(publisher *rabbitmq.Publisher) *DouInteractor {
 	}
 }
 
+type Section struct {
+	Title   string
+	Content []string
+}
+
 func (i *DouInteractor) Execute(ctx context.Context, task outPkg.ScrapeTask) error {
-	i.logger.Info("starting DouInteractor",
-		slog.String("url", task.ID.String()),
-		slog.Any("task", task))
+	i.logger.Info("starting DouInteractor", slog.String("url", task.ID.String()))
+
 	c := colly.NewCollector(
 		colly.Async(true),
-		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+		colly.UserAgent("Mozilla/5.0 ..."),
 	)
-	c.Limit(&colly.LimitRule{
+
+	_ = c.Limit(&colly.LimitRule{
 		DomainGlob:  "*jobs.dou.ua*",
 		Parallelism: 2,
 		Delay:       1 * time.Second,
 	})
-	c.OnError(func(r *colly.Response, err error) {
-		i.logger.Error("Request URL failed",
-			slog.String("url", r.Request.URL.String()),
-			slog.Int("status", r.StatusCode),
-			slog.Any("error", err))
-	})
+
+	var (
+		mu             sync.Mutex
+		foundVacancies []outPkg.Vacancy
+	)
 
 	detailCollector := c.Clone()
 
-	var mu sync.Mutex
-	var foundVacancies []outPkg.Vacancy
 	c.OnHTML("li.l-vacancy", func(e *colly.HTMLElement) {
 		vacancyURL := e.ChildAttr("a.vt", "href")
+		absURL := e.Request.AbsoluteURL(vacancyURL)
 
-		ctx := colly.NewContext()
-		ctx.Put("URL", vacancyURL)
+		if absURL != "" {
+			ctxDetail := colly.NewContext()
+			ctxDetail.Put("Company", e.ChildText("a.company"))
 
-		detailCollector.Request("GET", vacancyURL, nil, ctx, nil)
+			detailCollector.Request("GET", absURL, nil, ctxDetail, nil)
+		}
 	})
 
 	detailCollector.OnHTML("div.l-vacancy", func(e *colly.HTMLElement) {
-		sections := e.DOM.Find("div.vacancy-section")
-		i.logger.Info("Found a vacancy element!")
+		var requirements, about []string
+
+		e.DOM.Find("h2, h3, p").Each(func(_ int, s *goquery.Selection) {
+			text := strings.ToLower(s.Text())
+			isReq := strings.Contains(text, "requirements") || strings.Contains(text, "вимоги")
+			isAbout := strings.Contains(text, "about us") || strings.Contains(text, "про нас") || strings.Contains(text, "we offer")
+
+			if isReq || isAbout {
+				var target *[]string
+				if isReq {
+					target = &requirements
+				} else {
+					target = &about
+				}
+
+				next := s.Next()
+				if next.Is("ul") {
+					next.Find("li").Each(func(_ int, li *goquery.Selection) {
+						*target = append(*target, "--"+strings.TrimSpace(li.Text()))
+					})
+				} else {
+					*target = append(*target, strings.TrimSpace(next.Text()))
+				}
+			}
+		})
+
 		vacancy := outPkg.Vacancy{
-			Link:         e.Response.Ctx.Get("URL"),
-			Description:  e.ChildText("div.l-t"),
-			Title:        e.ChildText("h1.g-h2"),
-			Company:      e.ChildText("div.l-n a"),
-			City:         e.ChildText("span.place bi bi-geo-alt-fill"),
-			Requirements: sections.Eq(1).Text(),
-			About:        sections.Eq(2).Text(),
+			Link:         e.Request.URL.String(),
+			Title:        strings.TrimSpace(e.ChildText("h1.g-h2")),
+			Company:      e.Response.Ctx.Get("Company"),
+			Location:     strings.TrimSpace(e.ChildText("span.place")),
+			Description:  strings.TrimSpace(e.ChildText("div.b-typo.vacancy-section")),
+			Requirements: strings.Join(requirements, "\n"),
+			About:        strings.Join(about, "\n"),
 		}
+
 		mu.Lock()
 		foundVacancies = append(foundVacancies, vacancy)
 		mu.Unlock()
 	})
 
-	err := c.Visit("https://jobs.dou.ua/vacancies/?search=" + strings.Join(task.Keyword, "+"))
-	if err != nil {
+	searchURL := fmt.Sprintf("https://jobs.dou.ua/vacancies/?search=%s", url.QueryEscape(strings.Join(task.Keyword, " ")))
+	if err := c.Visit(searchURL); err != nil {
 		return fmt.Errorf("failed to visit: %w", err)
 	}
+
 	c.Wait()
 	detailCollector.Wait()
 
-	i.logger.Info("finished scraping", slog.Int("total", len(foundVacancies)))
-
-	fmt.Printf("%+v\n", foundVacancies)
-
-	result := outPkg.ScrapeResult{
-		TaskID:    task.ID,
-		Vacancies: foundVacancies,
-	}
-	err = i.publisher.PublishResults(ctx, result)
-	if err != nil {
-		return err
-	}
-	return nil
+	return i.publisher.PublishResults(ctx, outPkg.ScrapeResult{TaskID: task.ID, Vacancies: foundVacancies})
 }

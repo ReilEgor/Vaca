@@ -32,3 +32,10 @@ type TaskCache interface {
 type VacancyRepository interface {
 	SaveBatch(ctx context.Context, result outPkg.ScrapeResult) error
 }
+
+//go:generate mockery --name VacancySearchRepository --output ../mocks/domain --outpkg domain --case=underscore
+type VacancySearchRepository interface {
+	Index(ctx context.Context, v outPkg.Vacancy, taskID string) error
+	IndexBatch(ctx context.Context, vacancies outPkg.ScrapeResult) error
+	Search(ctx context.Context, query string) ([]outPkg.Vacancy, error)
+}

@@ -30,7 +30,7 @@ func (r *VacancyRepository) SaveBatch(ctx context.Context, result outPkg.ScrapeR
 		_, err := r.db.ExecContext(ctx, insertVacancyQuery,
 			vacancy.Title,
 			vacancy.Company,
-			vacancy.City,
+			vacancy.Location,
 			vacancy.Salary,
 			vacancy.Description,
 			vacancy.Link,
