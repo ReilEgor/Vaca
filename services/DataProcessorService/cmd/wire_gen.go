@@ -10,6 +10,7 @@ import (
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/broker/rabbitmq"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/config"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/domain"
+	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/repository/elasticsearch"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/repository/postgres"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/repository/redis"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/usecase"
@@ -23,7 +24,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeApp(dsn string, rabbitURL rabbitmq.RabbitURL, qName rabbitmq.SubscriberQueueName, logger *slog.Logger) (*App, func(), error) {
+func InitializeApp(dsn string, rabbitURL rabbitmq.RabbitURL, searchRepoURL elasticsearch.ElasticSearchURL, qName rabbitmq.SubscriberQueueName, logger *slog.Logger) (*App, func(), error) {
 	configConfig := config.NewConfig()
 	client, err := redis.NewRedisClient(configConfig)
 	if err != nil {
@@ -35,7 +36,13 @@ func InitializeApp(dsn string, rabbitURL rabbitmq.RabbitURL, qName rabbitmq.Subs
 		return nil, nil, err
 	}
 	vacancyRepository := postgres.NewVacancyRepository(db)
-	dataProcessorInteractor := usecase.NewDataProcessorInteractor(taskCache, vacancyRepository)
+	typedClient, err := elasticsearch.NewElasticClient(searchRepoURL)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	vacancySearchRepository := elasticsearch.NewElasticRepository(typedClient)
+	dataProcessorInteractor := usecase.NewDataProcessorInteractor(taskCache, vacancyRepository, vacancySearchRepository)
 	connection, cleanup2, err := rabbitmq.NewRabbitMQConn(rabbitURL)
 	if err != nil {
 		cleanup()
@@ -53,6 +60,7 @@ func InitializeApp(dsn string, rabbitURL rabbitmq.RabbitURL, qName rabbitmq.Subs
 		Repository: vacancyRepository,
 		Subscriber: dataSubscriber,
 		Cache:      taskCache,
+		SearchRepo: vacancySearchRepository,
 	}
 	return app, func() {
 		cleanup3()
@@ -71,9 +79,12 @@ var RepositorySet = wire.NewSet(postgres.NewPostgresDB, postgres.NewVacancyRepos
 
 var InfraSet = wire.NewSet(config.NewConfig, redis.NewRedisClient, redis.NewRedisTokenRepository)
 
+var ElasticSet = wire.NewSet(elasticsearch.NewElasticClient, elasticsearch.NewElasticRepository)
+
 type App struct {
 	Logic      domain.DataProcessorUsecase
 	Repository domain.VacancyRepository
 	Subscriber domain.DataSubscriber
 	Cache      domain.TaskCache
+	SearchRepo domain.VacancySearchRepository
 }

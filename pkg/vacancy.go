@@ -13,7 +13,7 @@ type Vacancy struct {
 	Link         string    `json:"link"`
 	Company      string    `json:"company"`
 	Salary       string    `json:"salary"`
-	City         string    `json:"city"`
+	Location     string    `json:"location"`
 	Requirements string    `json:"requirements"`
 	About        string    `json:"about"`
 }

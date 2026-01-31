@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	outPkg "github.com/ReilEgor/Vaca/pkg"
@@ -9,18 +10,20 @@ import (
 )
 
 type DataProcessorInteractor struct {
-	logger     *slog.Logger
-	cache      domain.TaskCache
-	repository domain.VacancyRepository
+	logger           *slog.Logger
+	cache            domain.TaskCache
+	repository       domain.VacancyRepository
+	searchRepository domain.VacancySearchRepository
 	//publisher *rabbitmq.Publisher
 
 }
 
-func NewDataProcessorInteractor(cache domain.TaskCache, repository domain.VacancyRepository) *DataProcessorInteractor {
+func NewDataProcessorInteractor(cache domain.TaskCache, repository domain.VacancyRepository, searchRepository domain.VacancySearchRepository) *DataProcessorInteractor {
 	return &DataProcessorInteractor{
-		logger:     slog.With(slog.String("component", "DataProcessorInteractor")),
-		cache:      cache,
-		repository: repository,
+		logger:           slog.With(slog.String("component", "DataProcessorInteractor")),
+		cache:            cache,
+		repository:       repository,
+		searchRepository: searchRepository,
 	}
 }
 
@@ -41,7 +44,12 @@ func (i *DataProcessorInteractor) Process(ctx context.Context, vacancies outPkg.
 	}
 
 	if current >= total {
+		fmt.Println("All vacancies processed for task:", taskID.String())
 		err := i.cache.SetStatus(ctx, taskID.String(), "completed")
+		if err != nil {
+			return err
+		}
+		err = i.searchRepository.IndexBatch(ctx, vacancies)
 		if err != nil {
 			return err
 		}

@@ -10,6 +10,7 @@ import (
 	_ "github.com/ReilEgor/Vaca/pkg"
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/broker/rabbitmq"
+	elastic "github.com/ReilEgor/Vaca/services/DataProcessorService/internal/repository/elasticsearch"
 )
 
 func main() {
@@ -20,7 +21,8 @@ func main() {
 	logger = slog.With(slog.String("service", "data-processor-service"))
 	dsn := os.Getenv("DB_SOURCE")
 	rabbitURL := os.Getenv("RABBIT_URL")
-	app, cleanup, err := InitializeApp(dsn, rabbitmq.RabbitURL(rabbitURL), outPkg.RabbitMQVacancyQueue, logger)
+	elasticURL := os.Getenv("ELASTICSEARCH_URL")
+	app, cleanup, err := InitializeApp(dsn, rabbitmq.RabbitURL(rabbitURL), elastic.ElasticSearchURL(elasticURL), outPkg.RabbitMQVacancyQueue, logger)
 	if err != nil {
 		logger.Error("failed to initialize app", slog.Any("error", err))
 		os.Exit(1)
