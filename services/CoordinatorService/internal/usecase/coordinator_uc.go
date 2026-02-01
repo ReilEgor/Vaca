@@ -88,9 +88,12 @@ func (uc *CoordinatorInteractor) CreateTask(ctx context.Context, keywords []stri
 func (uc *CoordinatorInteractor) GetVacancies(ctx context.Context, filter outPkg.VacancyFilter) ([]*outPkg.Vacancy, int64, error) {
 	return nil, 0, nil
 }
-func (uc *CoordinatorInteractor) GetAvailableSources(ctx context.Context) ([]*outPkg.Source, int64, error) {
-	return nil, 0, nil
+func (uc *CoordinatorInteractor) GetAvailableSources(ctx context.Context) ([]outPkg.Source, int64, error) {
+	//TODO: refactor
+	sources, err := uc.statusRepo.GetSources(ctx)
+	return sources, int64(len(sources)), err
 }
+
 func generateSearchKey(keywords, sources []string) string {
 	sort.Strings(keywords)
 	sort.Strings(sources)

@@ -2,19 +2,23 @@ package redis
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"log/slog"
 	"time"
 
+	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
 	"github.com/redis/go-redis/v9"
 )
 
 type RedisStatusRepo struct {
 	client *redis.Client
+	logger *slog.Logger
 }
 
 func NewRedisTokenRepository(client *redis.Client) domain.StatusRepository {
-	return &RedisStatusRepo{client: client}
+	return &RedisStatusRepo{client: client, logger: slog.With(slog.String("component", "redisStatusRepository"))}
 }
 
 func (r *RedisStatusRepo) Set(ctx context.Context, taskID string, searchKey string, totalSources int, ttl time.Duration) error {
@@ -48,4 +52,22 @@ func (r *RedisStatusRepo) GetIDByHash(ctx context.Context, searchKey string) (st
 		return "", nil
 	}
 	return id, err
+}
+
+func (r *RedisStatusRepo) GetSources(ctx context.Context) ([]outPkg.Source, error) {
+	key := outPkg.ScraperRegistryKey
+	res, err := r.client.HGetAll(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+	sources := make([]outPkg.Source, 0, len(res))
+	for _, val := range res {
+		var src outPkg.Source
+		if err := json.Unmarshal([]byte(val), &src); err != nil {
+			continue
+		}
+		sources = append(sources, src)
+	}
+	r.logger.Debug("successfully fetched sources from redis", slog.Int("count", len(sources)))
+	return sources, nil
 }

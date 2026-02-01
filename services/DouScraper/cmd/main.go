@@ -6,16 +6,18 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	_ "github.com/ReilEgor/Vaca/pkg"
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	rabbitmq "github.com/ReilEgor/Vaca/services/DouScraper/internal/broker/rabbitmq"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: slog.LevelDebug,
 	}))
 	slog.SetDefault(logger)
 	logger = slog.With(slog.String("service", "main"))
@@ -39,6 +41,17 @@ func main() {
 	if err != nil {
 		logger.Error("failed to initialize app", slog.Any("error", err))
 		os.Exit(1)
+	}
+
+	source := outPkg.Source{
+		ID:   uuid.New(),
+		Name: "dou.ua",
+		URL:  "https://dou.ua",
+	}
+	err = app.Repository.Register(ctx, source, time.Hour*24)
+	if err != nil {
+		logger.Error("failed to register source", slog.Any("error", err))
+		return
 	}
 
 	defer cleanup()

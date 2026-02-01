@@ -79,8 +79,6 @@ services:
       - RABBIT_URL=${RABBIT_URL}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
 
   dataprocessor-service:
@@ -109,10 +107,15 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       elasticsearch:
         condition: service_healthy
     environment:
       - RABBIT_URL=${RABBIT_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
 volumes:
   postgres_data:
   redis_data:
