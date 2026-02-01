@@ -4,8 +4,8 @@
 package main
 
 import (
-	"github.com/ReilEgor/Vaca/services/CoordinatorService/config"
 	rabbitmq "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/broker/rabbitmq"
+	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/config"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
 	redis2 "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/repository/redis"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest"

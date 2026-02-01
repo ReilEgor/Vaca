@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/config"
+	"github.com/ReilEgor/Vaca/services/DouScraper/internal/config"
 	"github.com/redis/go-redis/v9"
 )
 

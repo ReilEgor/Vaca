@@ -11,19 +11,21 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	outPkg "github.com/ReilEgor/Vaca/pkg"
-	"github.com/ReilEgor/Vaca/services/DouScraper/internal/broker/rabbitmq"
+	"github.com/ReilEgor/Vaca/services/DouScraper/internal/domain"
 	"github.com/gocolly/colly"
 )
 
 type DouInteractor struct {
-	logger    *slog.Logger
-	publisher *rabbitmq.Publisher
+	logger     *slog.Logger
+	publisher  domain.ResultPublisher
+	repository domain.SourceRepository
 }
 
-func NewDouInteractor(publisher *rabbitmq.Publisher) *DouInteractor {
+func NewDouInteractor(publisher domain.ResultPublisher, repository domain.SourceRepository) *DouInteractor {
 	return &DouInteractor{
-		logger:    slog.With(slog.String("component", "DouInteractor")),
-		publisher: publisher,
+		logger:     slog.With(slog.String("component", "DouInteractor")),
+		publisher:  publisher,
+		repository: repository,
 	}
 }
 

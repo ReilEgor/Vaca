@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"time"
 
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 )
@@ -19,4 +20,9 @@ type TaskSubscriber interface {
 //go:generate mockery --name ResultPublisher --output ../mocks/domain --outpkg domain --case=underscore
 type ResultPublisher interface {
 	PublishResults(ctx context.Context, vacancy outPkg.ScrapeResult) error
+}
+
+//go:generate mockery --name SourceRepository --output ../mocks/domain --outpkg domain --case=underscore
+type SourceRepository interface {
+	Register(ctx context.Context, source outPkg.Source, ttl time.Duration) error
 }
