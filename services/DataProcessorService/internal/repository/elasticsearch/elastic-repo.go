@@ -17,7 +17,7 @@ type ElasticRepository struct {
 }
 
 func NewElasticRepository(client *elastic.TypedClient) domain.VacancySearchRepository {
-	return &ElasticRepository{client: client, logger: slog.With(slog.String("component", "ElasticRepository"))}
+	return &ElasticRepository{client: client, logger: slog.With(slog.String("component", "elasticRepository"))}
 }
 
 func (e *ElasticRepository) Index(ctx context.Context, v outPkg.Vacancy, taskID string) error {
@@ -94,20 +94,17 @@ func (e *ElasticRepository) IndexBatch(ctx context.Context, vacancies outPkg.Scr
 
 	res, err := bulk.Do(ctx)
 	if err != nil {
-		return fmt.Errorf("bulk request failed: %w", err)
+		e.logger.Info(domain.FailedBulkRequest.Error(), slog.Any("error", err))
+		return fmt.Errorf("%w:%v", domain.FailedBulkRequest, err)
 	}
 
 	if res.Errors {
 		e.logger.Warn("bulk operation finished with some errors")
 	}
 
-	e.logger.Info("successfully indexed batch of vacancies",
+	e.logger.Debug("successfully indexed batch of vacancies",
 		slog.Int("count", len(vacancies.Vacancies)),
 		slog.String("task_id", vacancies.TaskID.String()))
 
 	return nil
-}
-
-func (e ElasticRepository) Search(ctx context.Context, query string) ([]outPkg.Vacancy, error) {
-	return nil, nil
 }

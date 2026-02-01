@@ -60,7 +60,7 @@ func (uc *CoordinatorInteractor) CreateTask(ctx context.Context, keywords []stri
 	}
 
 	taskID := uuid.New()
-	err = uc.statusRepo.Set(ctx, taskID.String(), searchKey, len(sources), time.Minute*10)
+	err = uc.statusRepo.Set(ctx, taskID.String(), searchKey, len(sources), time.Minute*2)
 	if err != nil {
 		//TODO: create status constants
 		uc.logger.Error("failed to set status from repo", slog.Any("error", err))

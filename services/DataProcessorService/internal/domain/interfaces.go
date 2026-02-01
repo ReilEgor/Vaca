@@ -37,5 +37,4 @@ type VacancyRepository interface {
 type VacancySearchRepository interface {
 	Index(ctx context.Context, v outPkg.Vacancy, taskID string) error
 	IndexBatch(ctx context.Context, vacancies outPkg.ScrapeResult) error
-	Search(ctx context.Context, query string) ([]outPkg.Vacancy, error)
 }

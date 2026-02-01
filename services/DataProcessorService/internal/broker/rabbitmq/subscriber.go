@@ -37,15 +37,23 @@ func NewTaskSubscriber(
 func (s *DataSubscriber) Listen(ctx context.Context) error {
 	_, err := s.ch.QueueDeclare(string(s.queueName), true, false, false, false, nil)
 	if err != nil {
-		return fmt.Errorf("failed to declare queue: %w", err)
+		s.logger.Error(domain.FailedToDeclareQueue.Error(),
+			slog.String("queueName", string(s.queueName)),
+			slog.Any("error", err),
+		)
+		return fmt.Errorf("%w:%v", domain.FailedToDeclareQueue, err)
 	}
 
 	msgs, err := s.ch.Consume(string(s.queueName), "", false, false, false, false, nil)
 	if err != nil {
-		return fmt.Errorf("failed to consume from queue %s: %w", string(s.queueName), err)
+		s.logger.Error(domain.FailedToConsumeFromQueue.Error(),
+			slog.String("queueName", string(s.queueName)),
+			slog.Any("error", err),
+		)
+		return fmt.Errorf("%w:%v", domain.FailedToConsumeFromQueue, err)
 	}
 
-	s.logger.Info("DataProcessor started listening", slog.String("queue", string(s.queueName)))
+	s.logger.Debug("started listening", slog.String("queue", string(s.queueName)))
 
 	for {
 		select {
@@ -54,14 +62,18 @@ func (s *DataSubscriber) Listen(ctx context.Context) error {
 			return nil
 		case d, ok := <-msgs:
 			if !ok {
-				return fmt.Errorf("rabbitmq channel closed")
+				return fmt.Errorf("broker channel closed")
 			}
 
 			var result outPkg.ScrapeResult
 
 			if err := json.Unmarshal(d.Body, &result); err != nil {
 				s.logger.Error("failed to unmarshal result", slog.Any("error", err))
-				d.Nack(false, false)
+				err := d.Nack(false, false)
+				if err != nil {
+					s.logger.Error(domain.FailedToNeckMessages.Error(), slog.Any("error", err))
+					return fmt.Errorf("%w:%v", domain.FailedToNeckMessages, err)
+				}
 				continue
 			}
 
@@ -71,12 +83,16 @@ func (s *DataSubscriber) Listen(ctx context.Context) error {
 					slog.Any("task_id", result.TaskID),
 					slog.Any("error", err))
 
-				d.Nack(false, true)
+				err := d.Nack(false, true)
+				if err != nil {
+					s.logger.Error(domain.FailedToNeckMessages.Error(), slog.Any("error", err))
+					return fmt.Errorf("%w:%v", domain.FailedToNeckMessages, err)
+				}
 				continue
 			}
 
 			if err := d.Ack(false); err != nil {
-				s.logger.Error("failed to ack message", slog.Any("error", err))
+				s.logger.Error(domain.FailedToAckMessages.Error(), slog.Any("error", err))
 			}
 		}
 	}

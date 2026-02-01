@@ -16,7 +16,7 @@ type VacancyRepository struct {
 }
 
 func NewVacancyRepository(db *sql.DB) domain.VacancyRepository {
-	return &VacancyRepository{db: db, logger: slog.With(slog.String("component", "VacancyRepository"))}
+	return &VacancyRepository{db: db, logger: slog.With(slog.String("component", "vacancyRepository"))}
 }
 
 const insertVacancyQuery = `

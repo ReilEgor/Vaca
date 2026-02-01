@@ -17,6 +17,9 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
+	slog.SetDefault(logger)
+	logger = slog.With(slog.String("service", "main"))
+
 	if err := godotenv.Load(); err != nil {
 		slog.Warn("no .env file found, using system environment variables")
 	}
@@ -45,5 +48,5 @@ func main() {
 	}
 
 	<-ctx.Done()
-	logger.Info("shutting down gracefully")
+	logger.Debug("shutting down gracefully")
 }
