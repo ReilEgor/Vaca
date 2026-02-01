@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	outPkg "github.com/ReilEgor/Vaca/pkg"
@@ -44,7 +43,7 @@ func (i *DataProcessorInteractor) Process(ctx context.Context, vacancies outPkg.
 	}
 
 	if current >= total {
-		fmt.Println("All vacancies processed for task:", taskID.String())
+		i.logger.Debug("all vacancies processed", slog.String("task_id", taskID.String()))
 		err := i.cache.SetStatus(ctx, taskID.String(), "completed")
 		if err != nil {
 			return err

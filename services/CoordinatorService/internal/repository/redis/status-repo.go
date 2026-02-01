@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
@@ -43,7 +44,7 @@ func (r *RedisStatusRepo) Get(ctx context.Context, taskID string) map[string]str
 func (r *RedisStatusRepo) GetIDByHash(ctx context.Context, searchKey string) (string, error) {
 	hashKey := "hash:" + searchKey
 	id, err := r.client.Get(ctx, hashKey).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return "", nil
 	}
 	return id, err

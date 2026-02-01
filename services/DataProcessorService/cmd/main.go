@@ -18,13 +18,17 @@ func main() {
 		Level: slog.LevelInfo,
 	}))
 	slog.SetDefault(logger)
-	logger = slog.With(slog.String("service", "data-processor-service"))
+	logger = slog.With(slog.String("service", "main"))
+
 	dsn := os.Getenv("DB_SOURCE")
 	rabbitURL := os.Getenv("RABBIT_URL")
 	elasticURL := os.Getenv("ELASTICSEARCH_URL")
+
 	app, cleanup, err := InitializeApp(dsn, rabbitmq.RabbitURL(rabbitURL), elastic.ElasticSearchURL(elasticURL), outPkg.RabbitMQVacancyQueue, logger)
 	if err != nil {
-		logger.Error("failed to initialize app", slog.Any("error", err))
+		logger.Error("failed to initialize app",
+			slog.Any("error", err),
+		)
 		os.Exit(1)
 	}
 
@@ -33,12 +37,18 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	logger.Info("monitor service is starting")
+	logger.Debug("data-processor service is starting")
 	go func() {
-		logger.Info("starting consumer")
-		app.Subscriber.Listen(ctx)
+		logger.Debug("starting subscriber")
+		err := app.Subscriber.Listen(ctx)
+		if err != nil {
+			logger.Error("subscriber stopped with error",
+				slog.Any("error", err),
+			)
+			return
+		}
 	}()
 
 	<-ctx.Done()
-	logger.Info("shutting down gracefully")
+	logger.Debug("shutting down gracefully")
 }
