@@ -19,13 +19,15 @@ type CoordinatorInteractor struct {
 	logger     *slog.Logger
 	statusRepo domain.StatusRepository
 	broker     domain.TaskPublisher
+	searcher   domain.VacancySearchRepository
 }
 
-func NewCoordinatorUsecase(sr domain.StatusRepository, br domain.TaskPublisher) *CoordinatorInteractor {
+func NewCoordinatorUsecase(sr domain.StatusRepository, br domain.TaskPublisher, searcher domain.VacancySearchRepository) *CoordinatorInteractor {
 	return &CoordinatorInteractor{
 		statusRepo: sr,
 		logger:     slog.With(slog.String("component", "coordinator_uc")),
 		broker:     br,
+		searcher:   searcher,
 	}
 }
 
@@ -86,7 +88,12 @@ func (uc *CoordinatorInteractor) CreateTask(ctx context.Context, keywords []stri
 }
 
 func (uc *CoordinatorInteractor) GetVacancies(ctx context.Context, filter outPkg.VacancyFilter) ([]*outPkg.Vacancy, int64, error) {
-	return nil, 0, nil
+	vacancies, err := uc.searcher.Search(ctx, filter)
+	if err != nil {
+		uc.logger.Error("failed to search vacancies", slog.Any("error", err))
+		return nil, 0, err
+	}
+	return vacancies, int64(len(vacancies)), nil
 }
 func (uc *CoordinatorInteractor) GetAvailableSources(ctx context.Context) ([]outPkg.Source, int64, error) {
 	//TODO: refactor

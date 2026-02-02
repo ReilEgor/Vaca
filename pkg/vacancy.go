@@ -7,7 +7,7 @@ import (
 )
 
 type Vacancy struct {
-	ID           uuid.UUID `json:"id"`
+	ID           uuid.UUID `json:"task_id"`
 	Title        string    `json:"title"`
 	Description  string    `json:"description"`
 	Link         string    `json:"link"`
@@ -18,14 +18,11 @@ type Vacancy struct {
 	About        string    `json:"about"`
 }
 type VacancyFilter struct {
-	Query     string
-	City      string
-	IsRemote  bool
-	SalaryMin int
-	SalaryMax int
-
-	Limit  int
-	Offset int
+	Query        string `form:"query"`
+	Location     string `form:"location"`
+	Requirements string `form:"requirements"`
+	Limit        int    `form:"limit"`
+	Offset       int    `form:"offset"`
 }
 
 type VacancySearcher interface {

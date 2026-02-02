@@ -72,6 +72,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     ports:
       - "${HTTP_PORT}:8080"
     environment:
@@ -80,7 +82,7 @@ services:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
   dataprocessor-service:
     build:
       context: ..

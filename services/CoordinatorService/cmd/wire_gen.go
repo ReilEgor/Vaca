@@ -10,7 +10,8 @@ import (
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/broker/rabbitmq"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/config"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
-	redis2 "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/repository/redis"
+	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/repository/elasticsearch"
+	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/repository/redis"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest/handlers"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/usecase"
@@ -23,13 +24,13 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeApp(rabbitURL rabbitmq.RabbitURL, taskQueue rabbitmq.PublisherQueueName) (*App, func(), error) {
+func InitializeApp(rabbitURL rabbitmq.RabbitURL, searchRepoURL elasticsearch.ElasticSearchURL, taskQueue rabbitmq.PublisherQueueName) (*App, func(), error) {
 	configConfig := config.NewConfig()
-	client, err := redis2.NewRedisClient(configConfig)
+	client, err := redis.NewRedisClient(configConfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	statusRepository := redis2.NewRedisTokenRepository(client)
+	statusRepository := redis.NewRedisTokenRepository(client)
 	connection, cleanup, err := rabbitmq.NewRabbitMQConn(rabbitURL)
 	if err != nil {
 		return nil, nil, err
@@ -40,12 +41,20 @@ func InitializeApp(rabbitURL rabbitmq.RabbitURL, taskQueue rabbitmq.PublisherQue
 		return nil, nil, err
 	}
 	publisher := rabbitmq.NewPublisher(channel, taskQueue)
-	coordinatorInteractor := usecase.NewCoordinatorUsecase(statusRepository, publisher)
+	typedClient, err := elasticsearch.NewElasticClient(searchRepoURL)
+	if err != nil {
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	elasticRepository := elasticsearch.NewElasticRepository(typedClient)
+	coordinatorInteractor := usecase.NewCoordinatorUsecase(statusRepository, publisher, elasticRepository)
 	ginServer := rest.NewGinServer(coordinatorInteractor)
 	app := &App{
 		Logic:      coordinatorInteractor,
 		Server:     ginServer,
 		Repository: statusRepository,
+		SearchRepo: elasticRepository,
 	}
 	return app, func() {
 		cleanup2()
@@ -61,10 +70,13 @@ var RestSet = wire.NewSet(rest.NewGinServer, handler.NewHandler)
 
 var BrokerSet = wire.NewSet(rabbitmq.NewRabbitMQConn, rabbitmq.NewRabbitMQChannel, rabbitmq.NewPublisher, wire.Bind(new(domain.TaskPublisher), new(*rabbitmq.Publisher)))
 
-var InfraSet = wire.NewSet(config.NewConfig, redis2.NewRedisClient, redis2.NewRedisTokenRepository)
+var InfraSet = wire.NewSet(config.NewConfig, redis.NewRedisClient, redis.NewRedisTokenRepository)
 
 type App struct {
 	Logic      domain.CoordinatorUsecase
 	Server     *rest.GinServer
 	Repository domain.StatusRepository
+	SearchRepo domain.VacancySearchRepository
 }
+
+var ElasticSet = wire.NewSet(elasticsearch.NewElasticClient, elasticsearch.NewElasticRepository, wire.Bind(new(domain.VacancySearchRepository), new(*elasticsearch.ElasticRepository)))

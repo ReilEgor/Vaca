@@ -63,10 +63,10 @@ func InitializeApp(
 ) (*App, func(), error) {
 	wire.Build(
 		InfraSet,
+		ElasticSet,
 		RepositorySet,
 		UsecaseSet,
 		BrokerSet,
-		ElasticSet,
 		wire.Struct(new(App), "*"),
 	)
 	return nil, nil, nil
