@@ -20,7 +20,8 @@ services:
     image: redis:7-alpine
     restart: always
     ports:
-      - "${REDIS_PORT}:${REDIS_PORT}"
+      - "${REDIS_PORT}:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     healthcheck:
@@ -50,7 +51,7 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
       - http.port=${ELASTICSEARCH_PORT:-9200}
     ports:
       - "${ELASTICSEARCH_PORT}:${ELASTICSEARCH_PORT}"
@@ -71,13 +72,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     ports:
       - "${HTTP_PORT}:8080"
     environment:
+      - HTTP_PORT=${HTTP_PORT}
       - RABBIT_URL=${RABBIT_URL}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
-
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
   dataprocessor-service:
     build:
       context: ..
@@ -90,7 +95,29 @@ services:
     environment:
       - DB_SOURCE=${DATA_PROCESSOR_DB_URL}
       - RABBIT_URL=${RABBIT_URL}
-
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+      
+  dou-scraper:
+    build:
+      context: ..
+      dockerfile: services/DouScraper/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - RABBIT_URL=${RABBIT_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
 volumes:
   postgres_data:
   redis_data:
