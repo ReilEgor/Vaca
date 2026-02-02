@@ -2,15 +2,15 @@ package main
 
 import (
 	"context"
+	_ "github.com/ReilEgor/Vaca/pkg"
+	outPkg "github.com/ReilEgor/Vaca/pkg"
+	rabbitmq "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/broker/rabbitmq"
+	elastic "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/repository/elasticsearch"
+	"github.com/joho/godotenv"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
-
-	_ "github.com/ReilEgor/Vaca/pkg"
-	outPkg "github.com/ReilEgor/Vaca/pkg"
-	rabbitmq "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/broker/rabbitmq"
-	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -23,8 +23,9 @@ func main() {
 
 	taskQueue := rabbitmq.PublisherQueueName(outPkg.RabbitMQTaskQueue)
 	rabbitURL := os.Getenv("RABBIT_URL")
+	elasticURL := os.Getenv("ELASTICSEARCH_URL")
 
-	app, cleanup, err := InitializeApp(rabbitmq.RabbitURL(rabbitURL), taskQueue)
+	app, cleanup, err := InitializeApp(rabbitmq.RabbitURL(rabbitURL), elastic.ElasticSearchURL(elasticURL), taskQueue)
 	if err != nil {
 		logger.Error("failed to initialize app", slog.Any("error", err))
 		os.Exit(1)

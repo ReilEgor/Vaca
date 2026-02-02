@@ -28,3 +28,8 @@ type StatusRepository interface {
 type TaskPublisher interface {
 	PublishTask(ctx context.Context, taskMessage outPkg.ScrapeTask, routingKey string) error
 }
+
+//go:generate mockery --name VacancySearchRepository --output ../mocks/domain --outpkg domain --case=underscore
+type VacancySearchRepository interface {
+	Search(ctx context.Context, filter outPkg.VacancyFilter) ([]*outPkg.Vacancy, error)
+}
