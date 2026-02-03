@@ -10,6 +10,10 @@ It represents a full-cycle engineering solution that automates the collection, p
 ![RabbitMQ](https://img.shields.io/badge/RabbitMQ-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
 
+[![codecov](https://codecov.io/gh/ReilEgor/Vaca/branch/develop/graph/badge.svg?token=CODECOV_TOKEN)](https://codecov.io/gh/ReilEgor/Vaca)
+
+---
+
 ## Architecture & Core Logic
 * **Coordinator Service (Go):** Handles API requests, manages tasks via RabbitMQ, and tracks real-time status in Redis.
 * **Scrapers (Go):** High-performance workers using the `Colly` library to extract job listings from various platforms.
@@ -23,8 +27,6 @@ It represents a full-cycle engineering solution that automates the collection, p
   <img height="600" alt="picture" src="https://github.com/user-attachments/assets/7ac8ba10-0d69-477e-b20e-828baf422eff" />
   <img height="600" alt="picture" src="https://github.com/user-attachments/assets/608c22d5-0845-4359-82a2-74127e759d13" />
 </p>
-
----
 
 ## API Reference
 
@@ -162,3 +164,4 @@ Wait ~30–90 seconds until services are ready.
 Distributed under the MIT License. See `LICENSE` for more information.
 
 **Developed by [YehorReil](https://github.com/ReilEgor)**
+

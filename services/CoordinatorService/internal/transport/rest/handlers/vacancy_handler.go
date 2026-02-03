@@ -32,7 +32,7 @@ func (h *Handler) GetVacancies(c *gin.Context) {
 
 	if err := c.ShouldBindQuery(&filter); err != nil {
 		h.logger.Warn("invalid request body", slog.Any("error", err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body", "details": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": domain.ErrInvalidRequestBody.Error()})
 		return
 	}
 	ctx := c.Request.Context()
