@@ -19,4 +19,6 @@ var (
 	ErrInvalidKeywords = errors.New("keywords cannot be empty")
 
 	ErrInvalidRequestBody = errors.New("invalid request body")
+
+	ErrSearchFailed = errors.New("search failed")
 )

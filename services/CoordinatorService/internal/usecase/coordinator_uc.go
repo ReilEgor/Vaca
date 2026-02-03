@@ -48,7 +48,7 @@ func (uc *CoordinatorInteractor) GetTaskStatus(ctx context.Context, taskID strin
 		ID:     parsedID,
 		Status: status,
 		//TODO: Am I needed to store CreatedAt in redis or another storage?
-		CreatedAt: time.Now(),
+		CreatedAt: time.Time{},
 	}
 
 	return task, nil
@@ -91,7 +91,7 @@ func (uc *CoordinatorInteractor) GetVacancies(ctx context.Context, filter outPkg
 	vacancies, err := uc.searcher.Search(ctx, filter)
 	if err != nil {
 		uc.logger.Error("failed to search vacancies", slog.Any("error", err))
-		return nil, 0, err
+		return nil, 0, domain.ErrSearchFailed
 	}
 	return vacancies, int64(len(vacancies)), nil
 }
