@@ -17,4 +17,8 @@ var (
 	ErrSourceUnavailable = errors.New("source is temporarily unavailable")
 
 	ErrInvalidKeywords = errors.New("keywords cannot be empty")
+
+	ErrInvalidRequestBody = errors.New("invalid request body")
+
+	ErrSearchFailed = errors.New("search failed")
 )
