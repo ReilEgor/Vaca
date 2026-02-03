@@ -157,7 +157,7 @@ func Test_Handler_CreateTask(t *testing.T) {
 			name: "usecase error",
 			mockSetup: func(uc *mocks.CoordinatorUsecase) {
 				uc.On("CreateTask", mock.Anything, []string{"go", "junior"}, []string{"dou.ua"}).Return(
-					&id, errors.New("uc error"),
+					nil, errors.New("uc error"),
 				)
 			},
 			inputBody: CreateTaskRequest{
