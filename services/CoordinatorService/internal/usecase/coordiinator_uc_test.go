@@ -51,7 +51,7 @@ func Test_Usecase_GetTaskStatus(t *testing.T) {
 	for _, tt := range test {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//t.Parallel()
 			sMock := mocks.NewStatusRepository(t)
 			rMock := mocks.NewTaskPublisher(t)
 			fMock := mocks.NewVacancySearchRepository(t)
@@ -66,7 +66,7 @@ func Test_Usecase_GetTaskStatus(t *testing.T) {
 }
 
 func Test_Usecase_CreateTask(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 	id := outPkg.IntToUUID(1)
 	keywords := []string{"golang"}
 	sources := []string{"dou.ua"}
@@ -116,7 +116,7 @@ func Test_Usecase_CreateTask(t *testing.T) {
 	for _, tt := range test {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//t.Parallel()
 			sMock := mocks.NewStatusRepository(t)
 			rMock := mocks.NewTaskPublisher(t)
 			fMock := mocks.NewVacancySearchRepository(t)
@@ -137,7 +137,7 @@ func Test_Usecase_CreateTask(t *testing.T) {
 }
 
 func Test_Usecase_GetVacancies(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 	tests := []struct {
 		name            string
 		expected        []*outPkg.Vacancy
@@ -168,7 +168,7 @@ func Test_Usecase_GetVacancies(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//t.Parallel()
 			sMock := mocks.NewStatusRepository(t)
 			rMock := mocks.NewTaskPublisher(t)
 			fMock := mocks.NewVacancySearchRepository(t)
@@ -222,7 +222,7 @@ func Test_Usecase_GetAvailableSources(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//t.Parallel()
 			sMock := mocks.NewStatusRepository(t)
 			rMock := mocks.NewTaskPublisher(t)
 			fMock := mocks.NewVacancySearchRepository(t)

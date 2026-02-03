@@ -81,7 +81,7 @@ func Test_Handler_GetTaskStatus(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//t.Parallel()
 			uc := mocks.NewCoordinatorUsecase(t)
 			tt.mockSetup(uc)
 
@@ -174,7 +174,7 @@ func Test_Handler_CreateTask(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//t.Parallel()
 			uc := mocks.NewCoordinatorUsecase(t)
 			tt.mockSetup(uc)
 

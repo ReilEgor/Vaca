@@ -105,7 +105,7 @@ func Test_Handler_GetVacancies(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			//t.Parallel()
 			uc := mocks.NewCoordinatorUsecase(t)
 			tt.mockSetup(uc)
 
