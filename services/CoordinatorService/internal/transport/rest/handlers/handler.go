@@ -5,6 +5,7 @@ import (
 
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Handler struct {
@@ -32,4 +33,5 @@ func (h *Handler) InitRoutes(router *gin.Engine) {
 		api.GET("/sources", h.GetAvailableSources)
 
 	}
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 }

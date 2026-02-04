@@ -66,7 +66,7 @@ func Test_Usecase_GetTaskStatus(t *testing.T) {
 }
 
 func Test_Usecase_CreateTask(t *testing.T) {
-	//t.Parallel()
+	// t.Parallel()
 	id := outPkg.IntToUUID(1)
 	keywords := []string{"golang"}
 	sources := []string{"dou.ua"}
@@ -85,7 +85,6 @@ func Test_Usecase_CreateTask(t *testing.T) {
 			keywords: keywords,
 			sources:  sources,
 			mockSetup: func(s *mocks.StatusRepository) {
-
 				s.On("GetIDByHash", mock.Anything, searchKey).Return(
 					id.String(), nil,
 				)
