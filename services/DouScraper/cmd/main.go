@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +14,7 @@ import (
 	rabbitmq "github.com/ReilEgor/Vaca/services/DouScraper/internal/broker/rabbitmq"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -55,6 +57,13 @@ func main() {
 	}
 
 	defer cleanup()
+
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			slog.Error("prometheus server failed", "error", err)
+		}
+	}()
 
 	if err := app.Subscriber.Listen(ctx); err != nil {
 		logger.Error("subscriber stop", slog.Any("error", err))
