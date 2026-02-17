@@ -11,9 +11,9 @@ import (
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/config"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/repository/elasticsearch"
-	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/repository/redis"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest/handlers"
+	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/stateClient"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/usecase"
 	"github.com/google/wire"
 )
@@ -24,13 +24,8 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeApp(rabbitURL rabbitmq.RabbitURL, searchRepoURL elasticsearch.ElasticSearchURL, taskQueue rabbitmq.PublisherQueueName) (*App, func(), error) {
-	configConfig := config.NewConfig()
-	client, err := redis.NewRedisClient(configConfig)
-	if err != nil {
-		return nil, nil, err
-	}
-	statusRepository := redis.NewRedisTokenRepository(client)
+func InitializeApp(rabbitURL rabbitmq.RabbitURL, searchRepoURL elasticsearch.ElasticSearchURL, taskQueue rabbitmq.PublisherQueueName, stateClientAddr config.StateClientAddr) (*App, func(), error) {
+	stateClientStateClient := stateClient.NewStateClient(stateClientAddr)
 	connection, cleanup, err := rabbitmq.NewRabbitMQConn(rabbitURL)
 	if err != nil {
 		return nil, nil, err
@@ -48,12 +43,11 @@ func InitializeApp(rabbitURL rabbitmq.RabbitURL, searchRepoURL elasticsearch.Ela
 		return nil, nil, err
 	}
 	elasticRepository := elasticsearch.NewElasticRepository(typedClient)
-	coordinatorInteractor := usecase.NewCoordinatorUsecase(statusRepository, publisher, elasticRepository)
+	coordinatorInteractor := usecase.NewCoordinatorUsecase(stateClientStateClient, publisher, elasticRepository)
 	ginServer := rest.NewGinServer(coordinatorInteractor)
 	app := &App{
 		Logic:      coordinatorInteractor,
 		Server:     ginServer,
-		Repository: statusRepository,
 		SearchRepo: elasticRepository,
 	}
 	return app, func() {
@@ -70,13 +64,12 @@ var RestSet = wire.NewSet(rest.NewGinServer, handler.NewHandler)
 
 var BrokerSet = wire.NewSet(rabbitmq.NewRabbitMQConn, rabbitmq.NewRabbitMQChannel, rabbitmq.NewPublisher, wire.Bind(new(domain.TaskPublisher), new(*rabbitmq.Publisher)))
 
-var InfraSet = wire.NewSet(config.NewConfig, redis.NewRedisClient, redis.NewRedisTokenRepository)
+var ElasticSet = wire.NewSet(elasticsearch.NewElasticClient, elasticsearch.NewElasticRepository, wire.Bind(new(domain.VacancySearchRepository), new(*elasticsearch.ElasticRepository)))
+
+var StateClient = wire.NewSet(stateClient.NewStateClient)
 
 type App struct {
 	Logic      domain.CoordinatorUsecase
 	Server     *rest.GinServer
-	Repository domain.StatusRepository
 	SearchRepo domain.VacancySearchRepository
 }
-
-var ElasticSet = wire.NewSet(elasticsearch.NewElasticClient, elasticsearch.NewElasticRepository, wire.Bind(new(domain.VacancySearchRepository), new(*elasticsearch.ElasticRepository)))

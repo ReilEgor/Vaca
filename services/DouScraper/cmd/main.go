@@ -7,11 +7,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	_ "github.com/ReilEgor/Vaca/pkg"
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	rabbitmq "github.com/ReilEgor/Vaca/services/DouScraper/internal/broker/rabbitmq"
+	"github.com/ReilEgor/Vaca/services/DouScraper/internal/config"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -32,6 +32,7 @@ func main() {
 	defer stop()
 
 	rabbitURL := os.Getenv("RABBIT_URL")
+	stateServiceAddress := os.Getenv("STATE_SERVICE_ADDRESS")
 	app, cleanup, err := InitializeApp(
 		rabbitmq.RabbitURL(rabbitURL),
 		rabbitmq.SubscriberQueueName("dou_tasks"),
@@ -39,6 +40,7 @@ func main() {
 		rabbitmq.SubscriberExchange(outPkg.RabbitMQExchangeName),
 		rabbitmq.PublisherQueueName(outPkg.RabbitMQVacancyQueue),
 		logger,
+		config.StateClientAddr(stateServiceAddress),
 	)
 	if err != nil {
 		logger.Error("failed to initialize app", slog.Any("error", err))
@@ -50,7 +52,7 @@ func main() {
 		Name: "dou.ua",
 		URL:  "https://dou.ua",
 	}
-	err = app.Repository.Register(ctx, source, time.Hour*24)
+	err = app.Repository.Register(ctx, source)
 	if err != nil {
 		logger.Error("failed to register source", slog.Any("error", err))
 		return

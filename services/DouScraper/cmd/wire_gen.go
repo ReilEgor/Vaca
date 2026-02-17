@@ -7,13 +7,14 @@
 package main
 
 import (
+	"log/slog"
+
 	"github.com/ReilEgor/Vaca/services/DouScraper/internal/broker/rabbitmq"
 	"github.com/ReilEgor/Vaca/services/DouScraper/internal/config"
 	"github.com/ReilEgor/Vaca/services/DouScraper/internal/domain"
-	"github.com/ReilEgor/Vaca/services/DouScraper/internal/repository/redis"
+	"github.com/ReilEgor/Vaca/services/DouScraper/internal/transport/stateClient"
 	"github.com/ReilEgor/Vaca/services/DouScraper/internal/usecase"
 	"github.com/google/wire"
-	"log/slog"
 )
 
 import (
@@ -22,7 +23,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeApp(rabbitURL rabbitmq.RabbitURL, qName rabbitmq.SubscriberQueueName, rKey rabbitmq.SubscriberRoutingKey, exch rabbitmq.SubscriberExchange, publishQName rabbitmq.PublisherQueueName, logger *slog.Logger) (*App, func(), error) {
+func InitializeApp(rabbitURL rabbitmq.RabbitURL, qName rabbitmq.SubscriberQueueName, rKey rabbitmq.SubscriberRoutingKey, exch rabbitmq.SubscriberExchange, publishQName rabbitmq.PublisherQueueName, logger *slog.Logger, stateClientAddr config.StateClientAddr) (*App, func(), error) {
 	connection, cleanup, err := rabbitmq.NewRabbitMQConn(rabbitURL)
 	if err != nil {
 		return nil, nil, err
@@ -33,20 +34,13 @@ func InitializeApp(rabbitURL rabbitmq.RabbitURL, qName rabbitmq.SubscriberQueueN
 		return nil, nil, err
 	}
 	publisher := rabbitmq.NewPublisher(channel, publishQName)
-	configConfig := config.NewConfig()
-	client, err := redis.NewRedisClient(configConfig)
-	if err != nil {
-		cleanup2()
-		cleanup()
-		return nil, nil, err
-	}
-	redisScraperRepo := redis.NewRedisScraperRepo(client)
-	douInteractor := usecase.NewDouInteractor(publisher, redisScraperRepo)
+	douInteractor := usecase.NewDouInteractor(publisher)
 	taskSubscriber := rabbitmq.NewTaskSubscriber(channel, douInteractor, logger, qName, rKey, exch)
+	stateClientStateClient := stateClient.NewStateClient(stateClientAddr)
 	app := &App{
 		Logic:      douInteractor,
 		Subscriber: taskSubscriber,
-		Repository: redisScraperRepo,
+		Repository: stateClientStateClient,
 	}
 	return app, func() {
 		cleanup2()
@@ -60,10 +54,10 @@ var UsecaseSet = wire.NewSet(usecase.NewDouInteractor, wire.Bind(new(domain.Scra
 
 var BrokerSet = wire.NewSet(rabbitmq.NewRabbitMQConn, rabbitmq.NewRabbitMQChannel, rabbitmq.NewPublisher, rabbitmq.NewTaskSubscriber, wire.Bind(new(domain.TaskSubscriber), new(*rabbitmq.TaskSubscriber)), wire.Bind(new(domain.ResultPublisher), new(*rabbitmq.Publisher)))
 
-var InfraSet = wire.NewSet(config.NewConfig, redis.NewRedisClient, redis.NewRedisScraperRepo, wire.Bind(new(domain.SourceRepository), new(*redis.RedisScraperRepo)))
+var StateClientSet = wire.NewSet(stateClient.NewStateClient)
 
 type App struct {
 	Logic      domain.ScraperUsecase
 	Subscriber domain.TaskSubscriber
-	Repository domain.SourceRepository
+	Repository *stateClient.StateClient
 }

@@ -11,6 +11,7 @@ import (
 	_ "github.com/ReilEgor/Vaca/pkg"
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/broker/rabbitmq"
+	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/config"
 	elastic "github.com/ReilEgor/Vaca/services/DataProcessorService/internal/repository/elasticsearch"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -25,8 +26,9 @@ func main() {
 	dsn := os.Getenv("DB_SOURCE")
 	rabbitURL := os.Getenv("RABBIT_URL")
 	elasticURL := os.Getenv("ELASTICSEARCH_URL")
+	stateServiceAddress := os.Getenv("STATE_SERVICE_ADDRESS")
 
-	app, cleanup, err := InitializeApp(dsn, rabbitmq.RabbitURL(rabbitURL), elastic.ElasticSearchURL(elasticURL), outPkg.RabbitMQVacancyQueue, logger)
+	app, cleanup, err := InitializeApp(dsn, rabbitmq.RabbitURL(rabbitURL), elastic.ElasticSearchURL(elasticURL), outPkg.RabbitMQVacancyQueue, logger, config.StateClientAddr(stateServiceAddress))
 	if err != nil {
 		logger.Error("failed to initialize app",
 			slog.Any("error", err),

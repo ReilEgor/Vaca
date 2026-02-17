@@ -115,19 +115,17 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      redis:
-        condition: service_healthy
       elasticsearch:
+        condition: service_healthy
+      state-service:
         condition: service_healthy
     ports:
       - "${HTTP_PORT}:8080"
     environment:
       - HTTP_PORT=${HTTP_PORT}
       - RABBIT_URL=${RABBIT_URL}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+      - STATE_SERVICE_ADDRESS=${STATE_SERVICE_ADDRESS}
   dataprocessor-service:
     logging:
       driver: "json-file"
@@ -137,6 +135,8 @@ services:
       context: ..
       dockerfile: services/DataProcessorService/Dockerfile
     depends_on:
+      state-service:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       elasticsearch:
@@ -144,13 +144,8 @@ services:
     environment:
       - DB_SOURCE=${DATA_PROCESSOR_DB_URL}
       - RABBIT_URL=${RABBIT_URL}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
-      
+      - STATE_SERVICE_ADDRESS=${STATE_SERVICE_ADDRESS}
   dou-scraper:
     logging:
       driver: "json-file"
@@ -160,17 +155,38 @@ services:
       context: ..
       dockerfile: services/DouScraper/Dockerfile
     depends_on:
-      rabbitmq:
+      state-service:
         condition: service_healthy
-      redis:
+      rabbitmq:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
     environment:
       - RABBIT_URL=${RABBIT_URL}
+      - STATE_SERVICE_ADDRESS=${STATE_SERVICE_ADDRESS}
+  state-service:
+    healthcheck:
+      test: [ "CMD", "/bin/grpc_health_probe", "-addr=:50051" ]
+      interval: 5s
+      timeout: 2s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.ID}}"
+    build:
+      context: ..
+      dockerfile: services/StateService/Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "${GRPC_PORT}:50051"
+    environment:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - GRPC_PORT
 volumes:
   grafanadata:
   prometheusdata:

@@ -11,28 +11,29 @@ import (
 
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
+	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/stateClient"
 	"github.com/google/uuid"
 )
 
 type CoordinatorInteractor struct {
-	//TODO: Add dependencies
-	logger     *slog.Logger
-	statusRepo domain.StatusRepository
-	broker     domain.TaskPublisher
-	searcher   domain.VacancySearchRepository
+	// TODO: Add dependencies
+	logger      *slog.Logger
+	stateClient *stateClient.StateClient
+	broker      domain.TaskPublisher
+	searcher    domain.VacancySearchRepository
 }
 
-func NewCoordinatorUsecase(sr domain.StatusRepository, br domain.TaskPublisher, searcher domain.VacancySearchRepository) *CoordinatorInteractor {
+func NewCoordinatorUsecase(stateClient *stateClient.StateClient, br domain.TaskPublisher, searcher domain.VacancySearchRepository) *CoordinatorInteractor {
 	return &CoordinatorInteractor{
-		statusRepo: sr,
-		logger:     slog.With(slog.String("component", "coordinator_uc")),
-		broker:     br,
-		searcher:   searcher,
+		stateClient: stateClient,
+		logger:      slog.With(slog.String("component", "coordinator_uc")),
+		broker:      br,
+		searcher:    searcher,
 	}
 }
 
 func (uc *CoordinatorInteractor) GetTaskStatus(ctx context.Context, taskID string) (*outPkg.Task, error) {
-	ans := uc.statusRepo.Get(ctx, taskID)
+	ans := uc.stateClient.Get(ctx, taskID)
 	status, ok := ans["status"]
 	if !ok {
 		uc.logger.Error("status not found in repo", slog.String("task_id", taskID))
@@ -47,26 +48,27 @@ func (uc *CoordinatorInteractor) GetTaskStatus(ctx context.Context, taskID strin
 	task := &outPkg.Task{
 		ID:     parsedID,
 		Status: status,
-		//TODO: Am I needed to store CreatedAt in redis or another storage?
+		// TODO: Am I needed to store CreatedAt in redis or another storage?
 		CreatedAt: time.Time{},
 	}
 
 	return task, nil
 }
+
 func (uc *CoordinatorInteractor) CreateTask(ctx context.Context, keywords []string, sources []string) (*uuid.UUID, error) {
 	searchKey := generateSearchKey(keywords, sources)
-	existingID, err := uc.statusRepo.GetIDByHash(ctx, searchKey)
+	existingID, err := uc.stateClient.GetIDByHash(ctx, searchKey)
 	if err == nil && existingID != "" {
 		id, _ := uuid.Parse(existingID)
 		return &id, nil
 	}
 
 	taskID := uuid.New()
-	err = uc.statusRepo.Set(ctx, taskID.String(), searchKey, len(sources), time.Minute*2)
+	err = uc.stateClient.Set(ctx, taskID.String(), searchKey, len(sources))
 	if err != nil {
-		//TODO: create status constants
+		// TODO: create status constants
 		uc.logger.Error("failed to set status from repo", slog.Any("error", err))
-		//TODO: return proper error
+		// TODO: return proper error
 		return nil, domain.ErrTaskNotFound
 	}
 
@@ -95,9 +97,10 @@ func (uc *CoordinatorInteractor) GetVacancies(ctx context.Context, filter outPkg
 	}
 	return vacancies, int64(len(vacancies)), nil
 }
+
 func (uc *CoordinatorInteractor) GetAvailableSources(ctx context.Context) ([]outPkg.Source, int64, error) {
-	//TODO: refactor
-	sources, err := uc.statusRepo.GetSources(ctx)
+	// TODO: refactor
+	sources, err := uc.stateClient.GetSources(ctx)
 	return sources, int64(len(sources)), err
 }
 
