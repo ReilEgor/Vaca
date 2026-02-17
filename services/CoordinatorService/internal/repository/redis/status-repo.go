@@ -17,6 +17,11 @@ type RedisStatusRepo struct {
 	logger *slog.Logger
 }
 
+func (r *RedisStatusRepo) GetTotal(ctx context.context.Context, taskID string)  (int64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewRedisTokenRepository(client *redis.Client) domain.StatusRepository {
 	return &RedisStatusRepo{client: client, logger: slog.With(slog.String("component", "redisStatusRepository"))}
 }

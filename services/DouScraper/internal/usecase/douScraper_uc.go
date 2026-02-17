@@ -16,16 +16,14 @@ import (
 )
 
 type DouInteractor struct {
-	logger     *slog.Logger
-	publisher  domain.ResultPublisher
-	repository domain.SourceRepository
+	logger    *slog.Logger
+	publisher domain.ResultPublisher
 }
 
-func NewDouInteractor(publisher domain.ResultPublisher, repository domain.SourceRepository) *DouInteractor {
+func NewDouInteractor(publisher domain.ResultPublisher) *DouInteractor {
 	return &DouInteractor{
-		logger:     slog.With(slog.String("component", "DouInteractor")),
-		publisher:  publisher,
-		repository: repository,
+		logger:    slog.With(slog.String("component", "DouInteractor")),
+		publisher: publisher,
 	}
 }
 

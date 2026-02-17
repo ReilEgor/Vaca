@@ -11,7 +11,7 @@ import (
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/domain"
 	elastic "github.com/ReilEgor/Vaca/services/DataProcessorService/internal/repository/elasticsearch"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/repository/postgres"
-	redis "github.com/ReilEgor/Vaca/services/DataProcessorService/internal/repository/redis"
+	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/transport/stateClient"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/usecase"
 	"github.com/google/wire"
 )
@@ -34,24 +34,20 @@ var RepositorySet = wire.NewSet(
 	postgres.NewVacancyRepository,
 )
 
-var InfraSet = wire.NewSet(
-	config.NewConfig,
-	redis.NewRedisClient,
-	redis.NewRedisTokenRepository,
-)
-
 var ElasticSet = wire.NewSet(
 	elastic.NewElasticClient,
 	elastic.NewElasticRepository,
+)
+
+var StateClient = wire.NewSet(
+	stateClient.NewStateClient,
 )
 
 type App struct {
 	Logic      domain.DataProcessorUsecase
 	Repository domain.VacancyRepository
 	Subscriber domain.DataSubscriber
-	Cache      domain.TaskCache
 	SearchRepo domain.VacancySearchRepository
-	//Broker     domain.TaskPublisher
 }
 
 func InitializeApp(
@@ -60,9 +56,10 @@ func InitializeApp(
 	searchRepoURL elastic.ElasticSearchURL,
 	qName rabbitmq.SubscriberQueueName,
 	logger *slog.Logger,
+	stateClientAddr config.StateClientAddr,
 ) (*App, func(), error) {
 	wire.Build(
-		InfraSet,
+		StateClient,
 		ElasticSet,
 		RepositorySet,
 		UsecaseSet,
