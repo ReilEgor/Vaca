@@ -2,7 +2,10 @@ package config
 
 import "os"
 
-type StateClientAddr string
+type (
+	StateClientAddr  string
+	SearchClientAddr string
+)
 
 type Config struct {
 	// REDIS

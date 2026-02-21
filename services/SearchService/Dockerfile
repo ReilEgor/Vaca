@@ -6,21 +6,21 @@ RUN wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health
 
 WORKDIR /app
 
-COPY services/StateService/go.mod services/StateService/go.sum ./services/StateService/
+COPY services/SearchService/go.mod services/SearchService/go.sum ./services/SearchService/
 COPY pkg/go.mod pkg/go.sum ./pkg/
 
-WORKDIR /app/services/StateService
+WORKDIR /app/services/SearchService
 RUN go mod download
 
 WORKDIR /app
 COPY . .
 
-RUN go build -o /state-service-app ./services/StateService/cmd
+RUN go build -o /search-service-app ./services/SearchService/cmd
 
 FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /root/
 COPY --from=builder /bin/grpc_health_probe /bin/grpc_health_probe
-COPY --from=builder /state-service-app .
-CMD ["./state-service-app"]
+COPY --from=builder /search-service-app .
+CMD ["./search-service-app"]

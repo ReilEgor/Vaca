@@ -121,6 +121,8 @@ services:
       context: ..
       dockerfile: services/CoordinatorService/Dockerfile
     depends_on:
+      search-service:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       elasticsearch:
@@ -132,7 +134,7 @@ services:
     environment:
       - HTTP_PORT=${HTTP_PORT}
       - RABBIT_URL=${RABBIT_URL}
-      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+      - SEARCH_SERVICE_ADDRESS=${SEARCH_SERVICE_ADDRESS}
       - STATE_SERVICE_ADDRESS=${STATE_SERVICE_ADDRESS}
   dataprocessor-service:
     logging:
@@ -147,12 +149,12 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      elasticsearch:
+      search-service:
         condition: service_healthy
     environment:
       - DB_SOURCE=${DATA_PROCESSOR_DB_URL}
       - RABBIT_URL=${RABBIT_URL}
-      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+      - SEARCH_SERVICE_ADDRESS=${SEARCH_SERVICE_ADDRESS}
       - STATE_SERVICE_ADDRESS=${STATE_SERVICE_ADDRESS}
   dou-scraper:
     logging:
@@ -194,7 +196,27 @@ services:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - GRPC_PORT
+      - GRPC_PORT=${GRPC_PORT}
+
+  search-service:
+    healthcheck:
+      test: [ "CMD", "/bin/grpc_health_probe", "-addr=:50051" ]
+      interval: 5s
+      timeout: 2s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.ID}}"
+    build:
+      context: ..
+      dockerfile: services/SearchService/Dockerfile
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - GRPC_PORT=${GRPC_PORT}
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
 volumes:
   grafanadata:
   prometheusdata:

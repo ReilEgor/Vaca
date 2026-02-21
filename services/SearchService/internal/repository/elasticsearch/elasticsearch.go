@@ -6,12 +6,11 @@ import (
 	"log"
 	"time"
 
+	"github.com/ReilEgor/Vaca/services/SearchService/internal/config"
 	elasticsearch "github.com/elastic/go-elasticsearch/v8"
 )
 
-type ElasticSearchURL string
-
-func NewElasticClient(address ElasticSearchURL) (*elasticsearch.TypedClient, error) {
+func NewElasticClient(address config.ElasticSearchURL) (*elasticsearch.TypedClient, error) {
 	cfg := elasticsearch.Config{
 		Addresses: []string{
 			string(address),

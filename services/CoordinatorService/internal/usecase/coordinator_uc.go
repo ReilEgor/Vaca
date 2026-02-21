@@ -17,18 +17,18 @@ import (
 
 type CoordinatorInteractor struct {
 	// TODO: Add dependencies
-	logger      *slog.Logger
-	stateClient *stateClient.StateClient
-	broker      domain.TaskPublisher
-	searcher    domain.VacancySearchRepository
+	logger       *slog.Logger
+	stateClient  domain.StatusRepository
+	broker       domain.TaskPublisher
+	searchClient domain.SearchRepository
 }
 
-func NewCoordinatorUsecase(stateClient *stateClient.StateClient, br domain.TaskPublisher, searcher domain.VacancySearchRepository) *CoordinatorInteractor {
+func NewCoordinatorUsecase(stateClient *stateClient.StateClient, br domain.TaskPublisher, searcher domain.SearchRepository) *CoordinatorInteractor {
 	return &CoordinatorInteractor{
-		stateClient: stateClient,
-		logger:      slog.With(slog.String("component", "coordinator_uc")),
-		broker:      br,
-		searcher:    searcher,
+		stateClient:  stateClient,
+		logger:       slog.With(slog.String("component", "coordinator_uc")),
+		broker:       br,
+		searchClient: searcher,
 	}
 }
 
@@ -90,7 +90,7 @@ func (uc *CoordinatorInteractor) CreateTask(ctx context.Context, keywords []stri
 }
 
 func (uc *CoordinatorInteractor) GetVacancies(ctx context.Context, filter outPkg.VacancyFilter) ([]*outPkg.Vacancy, int64, error) {
-	vacancies, err := uc.searcher.Search(ctx, filter)
+	vacancies, err := uc.searchClient.GetVacancies(ctx, filter)
 	if err != nil {
 		uc.logger.Error("failed to search vacancies", slog.Any("error", err))
 		return nil, 0, domain.ErrSearchFailed
