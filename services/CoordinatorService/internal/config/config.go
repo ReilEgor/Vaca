@@ -2,8 +2,13 @@ package config
 
 import "os"
 
+type (
+	StateClientAddr  string
+	SearchClientAddr string
+)
+
 type Config struct {
-	//REDIS
+	// REDIS
 	RedisHost     string
 	RedisPort     string
 	RedisPassword string
@@ -11,7 +16,7 @@ type Config struct {
 
 func NewConfig() *Config {
 	return &Config{
-		//REDIS
+		// REDIS
 		RedisHost:     getEnv("REDIS_HOST", "localhost"),
 		RedisPort:     getEnv("REDIS_PORT", "6379"),
 		RedisPassword: getEnv("REDIS_PASSWORD", ""),

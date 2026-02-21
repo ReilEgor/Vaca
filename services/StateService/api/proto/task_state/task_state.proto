@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package task_state.v1;
+option go_package = "github.com/ReilEgor/Vaca/services/StateService/api/gen/task_state/v1;task_statev1";
+
+// SetTask
+message SetTaskRequest {
+  string task_id = 1;
+  string search_key = 2;
+  int32 total_sources = 3;
+}
+message SetTaskResponse {}
+
+// GetTask
+message GetTaskRequest {
+  string task_id = 1;
+}
+message GetTaskResponse {
+  map<string, string> values = 1;
+}
+
+// GetTaskID by Hash
+message GetTaskIDByHashRequest {
+  string search_key  = 1;
+}
+message GetTaskIDByHashResponse {
+  string id = 1;
+}
+
+// GetSources
+message GetSourcesRequest {}
+message GetSourcesResponse {
+  repeated Source sources = 1;
+}
+message Source {
+  string id = 1;
+  string name = 2;
+  string url = 3;
+  bool is_active = 4;
+}
+
+// SetStatus
+message SetStatusRequest{
+  string task_id = 1;
+  string status = 2;
+}
+message SetStatusResponse{}
+
+// GetTotal
+message GetTotalRequest{
+  string task_id = 1;
+}
+message GetTotalResponse{
+  int32 total = 1;
+}
+
+// IncrementCompleted
+message IncrementCompletedRequest{
+  string task_id = 1;
+}
+message IncrementCompletedResponse{
+  int32 total = 1;
+}
+
+// Register
+message RegisterRequest{
+  Source source = 1;
+}
+message RegisterResponse{
+
+}
+
+service TaskStateService {
+  rpc SetTask (SetTaskRequest) returns (SetTaskResponse);
+  rpc GetTask (GetTaskRequest) returns (GetTaskResponse);
+  rpc GetTaskIDByHash (GetTaskIDByHashRequest) returns (GetTaskIDByHashResponse);
+  rpc GetSources (GetSourcesRequest) returns (GetSourcesResponse);
+  rpc SetStatus (SetStatusRequest) returns (SetStatusResponse);
+  rpc GetTotal (GetTotalRequest) returns (GetTotalResponse);
+  rpc IncrementCompleted (IncrementCompletedRequest) returns (IncrementCompletedResponse);
+  rpc Register (RegisterRequest) returns (RegisterResponse);
+}

@@ -6,12 +6,17 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/penglongli/gin-metrics/ginmetrics"
 )
 
 func SetupMiddleware(router *gin.Engine, logger *slog.Logger) {
 	router.Use(gin.Recovery())
 	router.Use(slogMiddleware(logger))
 	router.Use(customCORS())
+	m := ginmetrics.GetMonitor()
+	m.SetMetricPath("/metrics")
+	m.SetSlowTime(10)
+	m.Use(router)
 }
 
 func customCORS() gin.HandlerFunc {

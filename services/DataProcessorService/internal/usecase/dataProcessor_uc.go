@@ -10,17 +10,16 @@ import (
 
 type DataProcessorInteractor struct {
 	logger           *slog.Logger
-	cache            domain.TaskCache
+	stateRepository  domain.StateRepository
 	repository       domain.VacancyRepository
-	searchRepository domain.VacancySearchRepository
-	//publisher *rabbitmq.Publisher
-
+	searchRepository domain.SearchRepository
+	// publisher *rabbitmq.Publisher
 }
 
-func NewDataProcessorInteractor(cache domain.TaskCache, repository domain.VacancyRepository, searchRepository domain.VacancySearchRepository) *DataProcessorInteractor {
+func NewDataProcessorInteractor(stateClient domain.StateRepository, repository domain.VacancyRepository, searchRepository domain.SearchRepository) *DataProcessorInteractor {
 	return &DataProcessorInteractor{
-		logger:           slog.With(slog.String("component", "DataProcessorInteractor")),
-		cache:            cache,
+		logger:           slog.With(slog.String("component", "dataProcessorInteractor")),
+		stateRepository:  stateClient,
 		repository:       repository,
 		searchRepository: searchRepository,
 	}
@@ -28,11 +27,11 @@ func NewDataProcessorInteractor(cache domain.TaskCache, repository domain.Vacanc
 
 func (i *DataProcessorInteractor) Process(ctx context.Context, vacancies outPkg.ScrapeResult) error {
 	taskID := vacancies.TaskID
-	current, err := i.cache.IncrementCompleted(ctx, taskID.String())
+	current, err := i.stateRepository.IncrementCompleted(ctx, taskID.String())
 	if err != nil {
 		return err
 	}
-	total, err := i.cache.GetTotal(ctx, taskID.String())
+	total, err := i.stateRepository.GetTotal(ctx, taskID.String())
 	if err != nil {
 		return err
 	}
@@ -44,11 +43,11 @@ func (i *DataProcessorInteractor) Process(ctx context.Context, vacancies outPkg.
 
 	if current >= total {
 		i.logger.Debug("all vacancies processed", slog.String("task_id", taskID.String()))
-		err := i.cache.SetStatus(ctx, taskID.String(), "completed")
+		err := i.stateRepository.SetStatus(ctx, taskID.String(), "completed")
 		if err != nil {
 			return err
 		}
-		err = i.searchRepository.IndexBatch(ctx, vacancies)
+		err = i.searchRepository.SetVacancies(ctx, vacancies)
 		if err != nil {
 			return err
 		}

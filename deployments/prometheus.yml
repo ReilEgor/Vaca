@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 3s
+
+scrape_configs:
+  - job_name: "vaca-services"
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "coordinator-service:8080"
+          - "dou-scraper:8080"
+          - "dataprocessor-service:8080"

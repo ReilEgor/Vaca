@@ -7,10 +7,10 @@ import (
 	rabbitmq "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/broker/rabbitmq"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/config"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
-	elastic "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/repository/elasticsearch"
-	redis2 "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/repository/redis"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest"
 	handler "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest/handlers"
+	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/searchClient"
+	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/stateClient"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/usecase"
 	"github.com/google/wire"
 )
@@ -24,6 +24,7 @@ var RestSet = wire.NewSet(
 	rest.NewGinServer,
 	handler.NewHandler,
 )
+
 var BrokerSet = wire.NewSet(
 	rabbitmq.NewRabbitMQConn,
 	rabbitmq.NewRabbitMQChannel,
@@ -31,31 +32,32 @@ var BrokerSet = wire.NewSet(
 	wire.Bind(new(domain.TaskPublisher), new(*rabbitmq.Publisher)),
 )
 
-var InfraSet = wire.NewSet(
-	config.NewConfig,
-	redis2.NewRedisClient,
-	redis2.NewRedisTokenRepository,
+var SearchClientSet = wire.NewSet(
+	searchClient.NewSearchClient,
+	wire.Bind(new(domain.SearchRepository), new(*searchClient.SearchClient)),
+)
+
+var StateClientSet = wire.NewSet(
+	stateClient.NewStateClient,
+	wire.Bind(new(domain.StatusRepository), new(*stateClient.StateClient)),
 )
 
 type App struct {
 	Logic      domain.CoordinatorUsecase
 	Server     *rest.GinServer
-	Repository domain.StatusRepository
-	SearchRepo domain.VacancySearchRepository
-	//Broker     domain.TaskPublisher
+	SearchRepo domain.SearchRepository
 }
 
-var ElasticSet = wire.NewSet(
-	elastic.NewElasticClient,
-	elastic.NewElasticRepository,
-	wire.Bind(new(domain.VacancySearchRepository), new(*elastic.ElasticRepository)),
-)
-
-func InitializeApp(rabbitURL rabbitmq.RabbitURL, searchRepoURL elastic.ElasticSearchURL, taskQueue rabbitmq.PublisherQueueName) (*App, func(), error) {
+func InitializeApp(
+	rabbitURL rabbitmq.RabbitURL,
+	searchClientAddr config.SearchClientAddr,
+	taskQueue rabbitmq.PublisherQueueName,
+	stateClientAddr config.StateClientAddr,
+) (*App, func(), error) {
 	wire.Build(
-		InfraSet,
+		StateClientSet,
 		BrokerSet,
-		ElasticSet,
+		SearchClientSet,
 		UsecaseSet,
 		RestSet,
 		wire.Struct(new(App), "*"),
