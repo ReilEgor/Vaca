@@ -6,4 +6,5 @@ use (
 	./pkg
 	services/DouScraper
 	services/StateService
+	services/SearchService
 )

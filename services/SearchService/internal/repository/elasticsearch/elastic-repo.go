@@ -2,13 +2,15 @@ package elasticsearch
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 
 	outPkg "github.com/ReilEgor/Vaca/pkg"
-	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/domain"
+	"github.com/ReilEgor/Vaca/services/SearchService/internal/domain"
 	elastic "github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/operator"
 )
 
 type ElasticRepository struct {
@@ -16,11 +18,21 @@ type ElasticRepository struct {
 	logger *slog.Logger
 }
 
-func NewElasticRepository(client *elastic.TypedClient) domain.VacancySearchRepository {
+func NewElasticRepository(client *elastic.TypedClient) domain.SearchRepository {
 	return &ElasticRepository{client: client, logger: slog.With(slog.String("component", "elasticRepository"))}
 }
 
-func (e *ElasticRepository) Index(ctx context.Context, v outPkg.Vacancy, taskID string) error {
+func (e *ElasticRepository) SetVacancies(ctx context.Context, vacancies outPkg.ScrapeResult) error {
+	err := e.indexBatch(ctx, vacancies)
+	return err
+}
+
+func (e *ElasticRepository) GetVacancies(ctx context.Context, filter outPkg.VacancyFilter) ([]*outPkg.Vacancy, error) {
+	vacancies, err := e.search(ctx, filter)
+	return vacancies, err
+}
+
+func (e *ElasticRepository) index(ctx context.Context, v outPkg.Vacancy, taskID string) error {
 	document := struct {
 		TaskID       string `json:"task_id"`
 		Title        string `json:"title"`
@@ -46,14 +58,13 @@ func (e *ElasticRepository) Index(ctx context.Context, v outPkg.Vacancy, taskID 
 		Id(taskID).
 		Request(document).
 		Do(ctx)
-
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (e *ElasticRepository) IndexBatch(ctx context.Context, vacancies outPkg.ScrapeResult) error {
+func (e *ElasticRepository) indexBatch(ctx context.Context, vacancies outPkg.ScrapeResult) error {
 	if len(vacancies.Vacancies) == 0 {
 		e.logger.Info("no vacancies to index, skipping bulk request", slog.String("task_id", vacancies.TaskID.String()))
 		return nil
@@ -107,4 +118,64 @@ func (e *ElasticRepository) IndexBatch(ctx context.Context, vacancies outPkg.Scr
 		slog.String("task_id", vacancies.TaskID.String()))
 
 	return nil
+}
+
+func (e *ElasticRepository) search(ctx context.Context, filter outPkg.VacancyFilter) ([]*outPkg.Vacancy, error) {
+	var mustConditions []types.Query
+
+	if filter.Query != "" {
+		mustConditions = append(mustConditions, types.Query{
+			Match: map[string]types.MatchQuery{
+				"description": {
+					Query:     filter.Query,
+					Operator:  &operator.And,
+					Fuzziness: "AUTO",
+				},
+			},
+		})
+	}
+
+	if filter.Location != "" {
+		mustConditions = append(mustConditions, types.Query{
+			Match: map[string]types.MatchQuery{
+				"location": {
+					Query:     filter.Location,
+					Fuzziness: "AUTO",
+				},
+			},
+		})
+	}
+
+	searchQuery := &types.Query{
+		Bool: &types.BoolQuery{
+			Must: mustConditions,
+		},
+	}
+
+	res, err := e.client.Search().
+		Index("vacancies").
+		Query(searchQuery).
+		From(filter.Offset).
+		Size(filter.Limit).
+		Do(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("search error: %w", err)
+	}
+
+	return e.mapHitsToVacancies(res.Hits.Hits), nil
+}
+
+func (e *ElasticRepository) mapHitsToVacancies(hits []types.Hit) []*outPkg.Vacancy {
+	vacancies := make([]*outPkg.Vacancy, 0, len(hits))
+
+	for _, hit := range hits {
+		v := new(outPkg.Vacancy)
+		if err := json.Unmarshal(hit.Source_, v); err != nil {
+			e.logger.Error("unmarshal error", slog.Any("error", err))
+			continue
+		}
+
+		vacancies = append(vacancies, v)
+	}
+	return vacancies
 }

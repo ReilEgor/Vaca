@@ -6,21 +6,20 @@ import (
 
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/domain"
-	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/transport/stateClient"
 )
 
 type DataProcessorInteractor struct {
 	logger           *slog.Logger
-	stateClient      *stateClient.StateClient
+	stateRepository  domain.StateRepository
 	repository       domain.VacancyRepository
-	searchRepository domain.VacancySearchRepository
+	searchRepository domain.SearchRepository
 	// publisher *rabbitmq.Publisher
 }
 
-func NewDataProcessorInteractor(stateClient *stateClient.StateClient, repository domain.VacancyRepository, searchRepository domain.VacancySearchRepository) *DataProcessorInteractor {
+func NewDataProcessorInteractor(stateClient domain.StateRepository, repository domain.VacancyRepository, searchRepository domain.SearchRepository) *DataProcessorInteractor {
 	return &DataProcessorInteractor{
-		logger:           slog.With(slog.String("component", "DataProcessorInteractor")),
-		stateClient:      stateClient,
+		logger:           slog.With(slog.String("component", "dataProcessorInteractor")),
+		stateRepository:  stateClient,
 		repository:       repository,
 		searchRepository: searchRepository,
 	}
@@ -28,11 +27,11 @@ func NewDataProcessorInteractor(stateClient *stateClient.StateClient, repository
 
 func (i *DataProcessorInteractor) Process(ctx context.Context, vacancies outPkg.ScrapeResult) error {
 	taskID := vacancies.TaskID
-	current, err := i.stateClient.IncrementCompleted(ctx, taskID.String())
+	current, err := i.stateRepository.IncrementCompleted(ctx, taskID.String())
 	if err != nil {
 		return err
 	}
-	total, err := i.stateClient.GetTotal(ctx, taskID.String())
+	total, err := i.stateRepository.GetTotal(ctx, taskID.String())
 	if err != nil {
 		return err
 	}
@@ -44,11 +43,11 @@ func (i *DataProcessorInteractor) Process(ctx context.Context, vacancies outPkg.
 
 	if current >= total {
 		i.logger.Debug("all vacancies processed", slog.String("task_id", taskID.String()))
-		err := i.stateClient.SetStatus(ctx, taskID.String(), "completed")
+		err := i.stateRepository.SetStatus(ctx, taskID.String(), "completed")
 		if err != nil {
 			return err
 		}
-		err = i.searchRepository.IndexBatch(ctx, vacancies)
+		err = i.searchRepository.SetVacancies(ctx, vacancies)
 		if err != nil {
 			return err
 		}
