@@ -7,6 +7,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/broker/rabbitmq"
@@ -25,13 +26,13 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeApp(dsn string, rabbitURL rabbitmq.RabbitURL, qName rabbitmq.SubscriberQueueName, logger *slog.Logger, stateClientAddr config.StateClientAddr, searchClientAddr config.SearchClientAddr) (*App, func(), error) {
+func InitializeApp(ctx context.Context, dsn string, rabbitURL rabbitmq.RabbitURL, qName rabbitmq.SubscriberQueueName, logger *slog.Logger, stateClientAddr config.StateClientAddr, searchClientAddr config.SearchClientAddr) (*App, func(), error) {
 	stateClientStateClient := stateClient.NewStateClient(stateClientAddr)
-	db, cleanup, err := postgres.NewPostgresDB(dsn)
+	pool, cleanup, err := postgres.NewPostgresDB(ctx, dsn)
 	if err != nil {
 		return nil, nil, err
 	}
-	vacancyRepository := postgres.NewVacancyRepository(db)
+	vacancyRepository := postgres.NewVacancyRepository(pool)
 	searchClientSearchClient := searchClient.NewSearchClient(searchClientAddr)
 	dataProcessorInteractor := usecase.NewDataProcessorInteractor(stateClientStateClient, vacancyRepository, searchClientSearchClient)
 	connection, cleanup2, err := rabbitmq.NewRabbitMQConn(rabbitURL)

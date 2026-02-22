@@ -27,8 +27,10 @@ func main() {
 
 	stateServiceAddress := os.Getenv("STATE_SERVICE_ADDRESS")
 	searchServiceAddress := os.Getenv("SEARCH_SERVICE_ADDRESS")
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	app, cleanup, err := InitializeApp(dsn, rabbitmq.RabbitURL(rabbitURL), outPkg.RabbitMQVacancyQueue, logger, config.StateClientAddr(stateServiceAddress), config.SearchClientAddr(searchServiceAddress))
+	app, cleanup, err := InitializeApp(ctx, dsn, rabbitmq.RabbitURL(rabbitURL), outPkg.RabbitMQVacancyQueue, logger, config.StateClientAddr(stateServiceAddress), config.SearchClientAddr(searchServiceAddress))
 	if err != nil {
 		logger.Error("failed to initialize app",
 			slog.Any("error", err),
@@ -37,9 +39,6 @@ func main() {
 	}
 
 	defer cleanup()
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
