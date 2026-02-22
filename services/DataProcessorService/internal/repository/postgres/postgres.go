@@ -1,12 +1,13 @@
 package postgres
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"log/slog"
 	"net/url"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -15,23 +16,29 @@ const (
 	MAX_IDLE_CONNS = 25
 )
 
-func NewPostgresDB(dsn string) (*sql.DB, func(), error) {
+func NewPostgresDB(ctx context.Context, dsn string) (*pgxpool.Pool, func(), error) {
 	slog.With(slog.String("component", "postgres"))
 	slog.Info("connecting to database",
 		slog.String("dsn", maskDSN(dsn)),
 	)
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	db, err := sql.Open("pgx", dsn)
+	config.MaxConns = MAX_OPEN_CONNS
+	config.MaxConnIdleTime = time.Duration(MAX_IDLE_CONNS) * time.Second
+
+	config.HealthCheckPeriod = 1 * time.Minute
+
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open db: %w", err)
 	}
 
-	db.SetMaxOpenConns(MAX_OPEN_CONNS)
-	db.SetMaxIdleConns(MAX_IDLE_CONNS)
-	db.SetConnMaxLifetime(5 * time.Minute)
-
 	start := time.Now()
-	if err := db.Ping(); err != nil {
+
+	if err := pool.Ping(ctx); err != nil {
 		slog.Error("database ping failed",
 			slog.Any("error", err),
 			slog.Duration("duration", time.Since(start)))
@@ -44,14 +51,12 @@ func NewPostgresDB(dsn string) (*sql.DB, func(), error) {
 
 	cleanup := func() {
 		slog.Info("closing database connections")
-		if err := db.Close(); err != nil {
-			slog.Error("error closing database",
-				slog.Any("error", err))
-		}
+		pool.Close()
 	}
 
-	return db, cleanup, nil
+	return pool, cleanup, nil
 }
+
 func maskDSN(dsn string) string {
 	u, err := url.Parse(dsn)
 	if err != nil {

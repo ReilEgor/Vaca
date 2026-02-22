@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/broker/rabbitmq"
@@ -52,6 +53,7 @@ type App struct {
 }
 
 func InitializeApp(
+	ctx context.Context,
 	dsn string,
 	rabbitURL rabbitmq.RabbitURL,
 	qName rabbitmq.SubscriberQueueName,

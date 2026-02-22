@@ -2,20 +2,20 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/domain"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type VacancyRepository struct {
-	db     *sql.DB
+	db     *pgxpool.Pool
 	logger *slog.Logger
 }
 
-func NewVacancyRepository(db *sql.DB) domain.VacancyRepository {
+func NewVacancyRepository(db *pgxpool.Pool) domain.VacancyRepository {
 	return &VacancyRepository{db: db, logger: slog.With(slog.String("component", "vacancyRepository"))}
 }
 
@@ -27,7 +27,7 @@ const insertVacancyQuery = `
 
 func (r *VacancyRepository) SaveBatch(ctx context.Context, result outPkg.ScrapeResult) error {
 	for _, vacancy := range result.Vacancies {
-		_, err := r.db.ExecContext(ctx, insertVacancyQuery,
+		_, err := r.db.Exec(ctx, insertVacancyQuery,
 			vacancy.Title,
 			vacancy.Company,
 			vacancy.Location,
