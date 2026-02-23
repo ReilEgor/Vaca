@@ -24,7 +24,7 @@ It represents a full-cycle engineering solution that automates the collection, p
 `Client` → `CoordinatorService` → `RabbitMQ` → `Scrapers` → `DataService` → `PostgreSQL + Elasticsearch` → `CoordinatorService` → `Search Results`
 
 <p align="center">
-  <img height="600" alt="picture" src="https://github.com/user-attachments/assets/7ac8ba10-0d69-477e-b20e-828baf422eff" />
+  <img height="600" alt="picture" src="https://github.com/user-attachments/assets/41e05924-8406-47b2-8096-36c9ffedcda6" />
   <img height="600" alt="picture" src="https://github.com/user-attachments/assets/608c22d5-0845-4359-82a2-74127e759d13" />
 </p>
 
@@ -164,4 +164,5 @@ Wait ~30–90 seconds until services are ready.
 Distributed under the MIT License. See `LICENSE` for more information.
 
 **Developed by [YehorReil](https://github.com/ReilEgor)**
+
 
