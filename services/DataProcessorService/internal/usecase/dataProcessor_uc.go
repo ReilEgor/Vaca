@@ -6,6 +6,7 @@ import (
 
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/domain"
+	"golang.org/x/sync/errgroup"
 )
 
 type DataProcessorInteractor struct {
@@ -42,13 +43,16 @@ func (i *DataProcessorInteractor) Process(ctx context.Context, vacancies outPkg.
 	}
 
 	if current >= total {
+		g, gCtx := errgroup.WithContext(ctx)
 		i.logger.Debug("all vacancies processed", slog.String("task_id", taskID.String()))
-		err := i.stateRepository.SetStatus(ctx, taskID.String(), "completed")
-		if err != nil {
-			return err
-		}
-		err = i.searchRepository.SetVacancies(ctx, vacancies)
-		if err != nil {
+		g.Go(func() error {
+			return i.searchRepository.SetVacancies(gCtx, vacancies)
+		})
+		g.Go(func() error {
+			return i.stateRepository.SetStatus(gCtx, taskID.String(), "completed")
+		})
+		if err := g.Wait(); err != nil {
+			i.logger.Error("failed to finalize task", slog.Any("error", err))
 			return err
 		}
 	}
