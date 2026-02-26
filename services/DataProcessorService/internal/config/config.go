@@ -1,31 +1,22 @@
 package config
 
-import "os"
-
 type (
-	StateClientAddr  string
-	SearchClientAddr string
+	StateClientAddr     string
+	SearchClientAddr    string
+	RabbitURL           string
+	SubscriberQueueName string
+	PublisherQueueName  string
 )
 
 type Config struct {
 	// REDIS
-	RedisHost     string
-	RedisPort     string
-	RedisPassword string
-}
-
-func NewConfig() *Config {
-	return &Config{
-		// REDIS
-		RedisHost:     getEnv("REDIS_HOST", "localhost"),
-		RedisPort:     getEnv("REDIS_PORT", "6379"),
-		RedisPassword: getEnv("REDIS_PASSWORD", ""),
-	}
-}
-
-func getEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
+	RedisHost            string `env:"REDIS_HOST" envDefault:"localhost"`
+	RedisPort            string `env:"REDIS_PORT" envDefault:"6379"`
+	RedisPassword        string `env:"REDIS_PASSWORD" envDefault:""`
+	DSN                  string `env:"DB_SOURCE" envDefault:"postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"`
+	RabbitURL            string `env:"RABBIT_URL" envDefault:"amqp://guest:guest@localhost:5672/"`
+	StateServiceAddress  string `env:"STATE_SERVICE_ADDRESS" envDefault:"http://localhost"`
+	SearchServiceAddress string `env:"SEARCH_SERVICE_ADDRESS" envDefault:"http://localhost"`
+	SubscriberQueueName  string `env:"SUBSCRIBER_QUEUE" envDefault:"vacancy_result_queue"`
+	PublisherQueueName   string `env:"NOTIFICATION_QUEUE" envDefault:"notification_queue"`
 }

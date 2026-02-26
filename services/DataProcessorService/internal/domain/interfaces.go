@@ -12,8 +12,8 @@ type DataSubscriber interface {
 }
 
 //go:generate mockery --name ResultPublisher --output ../mocks/domain --outpkg domain --case=underscore
-type ResultPublisher interface {
-	Publish(result []byte) error
+type DataPublisher interface {
+	Publish(ctx context.Context, message outPkg.ScrapeResult) error
 }
 
 //go:generate mockery --name DataProcessorUsecase --output ../mocks/domain --outpkg domain --case=underscore

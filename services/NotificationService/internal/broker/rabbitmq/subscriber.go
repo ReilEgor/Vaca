@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/NotificationService/internal/config"
 	"github.com/ReilEgor/Vaca/services/NotificationService/internal/domain"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -62,7 +63,7 @@ func (s *NotificationSubscriber) Listen(ctx context.Context) error {
 				return nil
 			}
 
-			var message string
+			var message outPkg.ScrapeResult
 			if err := json.Unmarshal(msg.Body, &message); err != nil {
 				s.logger.Error("failed to unmarshal message",
 					slog.Any("error", err),

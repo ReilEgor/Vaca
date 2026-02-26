@@ -4,12 +4,11 @@ import (
 	"log/slog"
 	"net/url"
 
+	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/config"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type RabbitURL string
-
-func NewRabbitMQConn(url RabbitURL) (*amqp.Connection, func(), error) {
+func NewRabbitMQConn(url config.RabbitURL) (*amqp.Connection, func(), error) {
 	logger := slog.With(slog.String("component", "rabbitmqConnector"))
 	conn, err := amqp.Dial(string(url))
 	if err != nil {
@@ -36,6 +35,7 @@ func NewRabbitMQConn(url RabbitURL) (*amqp.Connection, func(), error) {
 
 	return conn, cleanup, nil
 }
+
 func NewRabbitMQChannel(conn *amqp.Connection) (*amqp.Channel, func(), error) {
 	logger := slog.With(slog.String("component", "rabbitmqChannel"))
 	ch, err := conn.Channel()
@@ -54,6 +54,7 @@ func NewRabbitMQChannel(conn *amqp.Connection) (*amqp.Channel, func(), error) {
 	}
 	return ch, cleanup, nil
 }
+
 func maskRabbitURL(rawURL string) string {
 	if rawURL == "" {
 		return ""

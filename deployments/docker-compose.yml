@@ -102,8 +102,8 @@ services:
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
       - http.port=${ELASTICSEARCH_PORT:-9200}
-    #ports:
-    #  - "${ELASTICSEARCH_PORT}:${ELASTICSEARCH_PORT}"
+    ports:
+      - "${ELASTICSEARCH_PORT}:${ELASTICSEARCH_PORT}"
     volumes:
       - elastic_data:/usr/share/elasticsearch/data
     healthcheck:
@@ -156,6 +156,7 @@ services:
       - RABBIT_URL=${RABBIT_URL}
       - SEARCH_SERVICE_ADDRESS=${SEARCH_SERVICE_ADDRESS}
       - STATE_SERVICE_ADDRESS=${STATE_SERVICE_ADDRESS}
+      - NOTIFICATION_QUEUE=${NOTIFICATION_QUEUE}
   dou-scraper:
     logging:
       driver: "json-file"
