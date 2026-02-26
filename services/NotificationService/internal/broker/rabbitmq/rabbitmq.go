@@ -4,13 +4,13 @@ import (
 	"log/slog"
 	"net/url"
 
-	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/config"
+	"github.com/ReilEgor/Vaca/services/NotificationService/internal/config"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func NewRabbitMQConn(url config.RabbitURL) (*amqp.Connection, func(), error) {
+func NewRabbitMQConn(url config.RabbitMQURL) (*amqp.Connection, func(), error) {
 	logger := slog.With(slog.String("component", "rabbitmqConnector"))
-	conn, err := amqp.Dial(string(url))
+	connection, err := amqp.Dial(string(url))
 	if err != nil {
 		logger.Error("failed to connect to rabbitmq",
 			slog.Any("error", err),
@@ -19,21 +19,18 @@ func NewRabbitMQConn(url config.RabbitURL) (*amqp.Connection, func(), error) {
 		return nil, func() {}, err
 	}
 
-	slog.Info("successful connection to RabbitMQ",
+	logger.Info("successful connection to RabbitMQ",
 		slog.String("component", "rabbitmq"),
 		slog.String("url", maskRabbitURL(string(url))))
-
 	cleanup := func() {
-		slog.Info("closing RabbitMQ connection")
-
-		if err := conn.Close(); err != nil {
-			slog.Error("failed to close RabbitMQ connection",
+		logger.Info("closing RabbitMQ connection")
+		if err := connection.Close(); err != nil {
+			logger.Error("failed to close RabbitMQ connection",
 				slog.String("component", "rabbitmq"),
 				slog.Any("error", err))
 		}
 	}
-
-	return conn, cleanup, nil
+	return connection, cleanup, nil
 }
 
 func NewRabbitMQChannel(conn *amqp.Connection) (*amqp.Channel, func(), error) {

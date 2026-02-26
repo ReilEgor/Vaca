@@ -26,7 +26,8 @@ var BrokerSet = wire.NewSet(
 	rabbitmq.NewRabbitMQConn,
 	rabbitmq.NewRabbitMQChannel,
 	rabbitmq.NewTaskSubscriber,
-
+	rabbitmq.NewDataPublisher,
+	wire.Bind(new(domain.DataPublisher), new(*rabbitmq.DataPublisher)),
 	wire.Bind(new(domain.DataSubscriber), new(*rabbitmq.DataSubscriber)),
 )
 
@@ -55,11 +56,12 @@ type App struct {
 func InitializeApp(
 	ctx context.Context,
 	dsn string,
-	rabbitURL rabbitmq.RabbitURL,
-	qName rabbitmq.SubscriberQueueName,
+	rabbitURL config.RabbitURL,
+	qSubscriberName config.SubscriberQueueName,
 	logger *slog.Logger,
 	stateClientAddr config.StateClientAddr,
 	searchClientAddr config.SearchClientAddr,
+	qPublisherName config.PublisherQueueName,
 ) (*App, func(), error) {
 	wire.Build(
 		SearchClientSet,

@@ -84,9 +84,9 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
-    #ports:
-    #  - "5672:5672"
-    #  - "15672:15672"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
     volumes:
       - rabbit_data:/var/lib/rabbitmq
     healthcheck:
@@ -102,8 +102,8 @@ services:
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
       - http.port=${ELASTICSEARCH_PORT:-9200}
-    #ports:
-    #  - "${ELASTICSEARCH_PORT}:${ELASTICSEARCH_PORT}"
+    ports:
+      - "${ELASTICSEARCH_PORT}:${ELASTICSEARCH_PORT}"
     volumes:
       - elastic_data:/usr/share/elasticsearch/data
     healthcheck:
@@ -156,6 +156,7 @@ services:
       - RABBIT_URL=${RABBIT_URL}
       - SEARCH_SERVICE_ADDRESS=${SEARCH_SERVICE_ADDRESS}
       - STATE_SERVICE_ADDRESS=${STATE_SERVICE_ADDRESS}
+      - NOTIFICATION_QUEUE=${NOTIFICATION_QUEUE}
   dou-scraper:
     logging:
       driver: "json-file"
@@ -217,6 +218,19 @@ services:
     environment:
       - GRPC_PORT=${GRPC_PORT}
       - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+  notification-service:
+    logging:
+      driver: "json-file"
+      options:
+        tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.ID}}"
+    build:
+      context: ..
+      dockerfile: services/NotificationService/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - RABBIT_URL=${RABBIT_URL}
 volumes:
   grafanadata:
   prometheusdata:

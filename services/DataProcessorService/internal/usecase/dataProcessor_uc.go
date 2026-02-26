@@ -2,10 +2,12 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/domain"
+	"golang.org/x/sync/errgroup"
 )
 
 type DataProcessorInteractor struct {
@@ -13,15 +15,17 @@ type DataProcessorInteractor struct {
 	stateRepository  domain.StateRepository
 	repository       domain.VacancyRepository
 	searchRepository domain.SearchRepository
+	dataPublisher    domain.DataPublisher
 	// publisher *rabbitmq.Publisher
 }
 
-func NewDataProcessorInteractor(stateClient domain.StateRepository, repository domain.VacancyRepository, searchRepository domain.SearchRepository) *DataProcessorInteractor {
+func NewDataProcessorInteractor(stateClient domain.StateRepository, repository domain.VacancyRepository, searchRepository domain.SearchRepository, dataPublisher domain.DataPublisher) *DataProcessorInteractor {
 	return &DataProcessorInteractor{
 		logger:           slog.With(slog.String("component", "dataProcessorInteractor")),
 		stateRepository:  stateClient,
 		repository:       repository,
 		searchRepository: searchRepository,
+		dataPublisher:    dataPublisher,
 	}
 }
 
@@ -35,20 +39,27 @@ func (i *DataProcessorInteractor) Process(ctx context.Context, vacancies outPkg.
 	if err != nil {
 		return err
 	}
-
-	err = i.repository.SaveBatch(ctx, vacancies)
-	if err != nil {
-		return err
+	g, gCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		return i.repository.SaveBatch(gCtx, vacancies)
+	})
+	g.Go(func() error {
+		return i.dataPublisher.Publish(gCtx, vacancies)
+	})
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("batch processing failed: %w", err)
 	}
-
 	if current >= total {
+		g, gCtx := errgroup.WithContext(ctx)
 		i.logger.Debug("all vacancies processed", slog.String("task_id", taskID.String()))
-		err := i.stateRepository.SetStatus(ctx, taskID.String(), "completed")
-		if err != nil {
-			return err
-		}
-		err = i.searchRepository.SetVacancies(ctx, vacancies)
-		if err != nil {
+		g.Go(func() error {
+			return i.searchRepository.SetVacancies(gCtx, vacancies)
+		})
+		g.Go(func() error {
+			return i.stateRepository.SetStatus(gCtx, taskID.String(), "completed")
+		})
+		if err := g.Wait(); err != nil {
+			i.logger.Error("failed to finalize task", slog.Any("error", err))
 			return err
 		}
 	}

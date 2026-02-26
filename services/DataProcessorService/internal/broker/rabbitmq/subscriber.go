@@ -7,24 +7,23 @@ import (
 	"log/slog"
 
 	outPkg "github.com/ReilEgor/Vaca/pkg"
+	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/config"
 	"github.com/ReilEgor/Vaca/services/DataProcessorService/internal/domain"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
-
-type SubscriberQueueName string
 
 type DataSubscriber struct {
 	ch        *amqp.Channel
 	usecase   domain.DataProcessorUsecase
 	logger    *slog.Logger
-	queueName SubscriberQueueName
+	queueName config.SubscriberQueueName
 }
 
 func NewTaskSubscriber(
 	ch *amqp.Channel,
 	uc domain.DataProcessorUsecase,
 	logger *slog.Logger,
-	qName SubscriberQueueName,
+	qName config.SubscriberQueueName,
 ) *DataSubscriber {
 	return &DataSubscriber{
 		ch:        ch,
