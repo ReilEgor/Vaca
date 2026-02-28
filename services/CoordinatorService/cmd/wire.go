@@ -49,9 +49,9 @@ type App struct {
 }
 
 func InitializeApp(
-	rabbitURL rabbitmq.RabbitURL,
+	rabbitURL config.RabbitURL,
 	searchClientAddr config.SearchClientAddr,
-	taskQueue rabbitmq.PublisherQueueName,
+	taskQueue config.PublisherQueueName,
 	stateClientAddr config.StateClientAddr,
 ) (*App, func(), error) {
 	wire.Build(

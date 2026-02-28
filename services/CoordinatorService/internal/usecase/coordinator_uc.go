@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
 	"log/slog"
 	"sort"
 	"strings"
@@ -11,96 +12,119 @@ import (
 
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
-	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/stateClient"
 	"github.com/google/uuid"
 )
 
 type CoordinatorInteractor struct {
-	// TODO: Add dependencies
 	logger       *slog.Logger
 	stateClient  domain.StatusRepository
 	broker       domain.TaskPublisher
 	searchClient domain.SearchRepository
 }
 
-func NewCoordinatorUsecase(stateClient *stateClient.StateClient, br domain.TaskPublisher, searcher domain.SearchRepository) *CoordinatorInteractor {
+const (
+	componentCoordinatorUC = "coordinator_uc"
+	routingKeyPrefix       = "scraper."
+)
+
+func NewCoordinatorUsecase(
+	stateClient domain.StatusRepository,
+	br domain.TaskPublisher,
+	searcher domain.SearchRepository,
+) *CoordinatorInteractor {
 	return &CoordinatorInteractor{
 		stateClient:  stateClient,
-		logger:       slog.With(slog.String("component", "coordinator_uc")),
 		broker:       br,
 		searchClient: searcher,
+		logger:       slog.With(slog.String("component", componentCoordinatorUC)),
 	}
 }
 
 func (uc *CoordinatorInteractor) GetTaskStatus(ctx context.Context, taskID string) (*outPkg.Task, error) {
-	ans := uc.stateClient.Get(ctx, taskID)
-	status, ok := ans["status"]
-	if !ok {
-		uc.logger.Error("status not found in repo", slog.String("task_id", taskID))
-		return nil, domain.ErrTaskNotFound
-	}
-
 	parsedID, err := uuid.Parse(taskID)
 	if err != nil {
-		uc.logger.Error("failed to parse task ID", slog.String("task_id", taskID), slog.Any("error", err))
+		return nil, fmt.Errorf("%w: %v", domain.ErrInvalidTaskID, err)
+	}
+
+	ans, err := uc.stateClient.Get(ctx, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("get task status: %w", err)
+	}
+
+	status, ok := ans["status"]
+	if !ok {
+		uc.logger.Warn("status key missing in state", slog.String("task_id", taskID))
 		return nil, domain.ErrTaskNotFound
 	}
-	task := &outPkg.Task{
-		ID:     parsedID,
-		Status: status,
-		// TODO: Am I needed to store CreatedAt in redis or another storage?
-		CreatedAt: time.Time{},
-	}
 
-	return task, nil
+	return &outPkg.Task{
+		ID:        parsedID,
+		Status:    status,
+		CreatedAt: time.Time{},
+	}, nil
 }
 
-func (uc *CoordinatorInteractor) CreateTask(ctx context.Context, keywords []string, sources []string) (*uuid.UUID, error) {
+func (uc *CoordinatorInteractor) CreateTask(ctx context.Context, keywords []string, sources []string) (*outPkg.Task, error) {
 	searchKey := generateSearchKey(keywords, sources)
 	existingID, err := uc.stateClient.GetIDByHash(ctx, searchKey)
 	if err == nil && existingID != "" {
-		id, _ := uuid.Parse(existingID)
-		return &id, nil
+		id, err := uuid.Parse(existingID)
+		if err != nil {
+			return nil, fmt.Errorf("%w: existing task: %v", domain.ErrInvalidTaskID, err)
+		}
+		return &outPkg.Task{ID: id, Status: "exists"}, nil
 	}
 
 	taskID := uuid.New()
-	err = uc.stateClient.Set(ctx, taskID.String(), searchKey, len(sources))
-	if err != nil {
-		// TODO: create status constants
-		uc.logger.Error("failed to set status from repo", slog.Any("error", err))
-		// TODO: return proper error
-		return nil, domain.ErrTaskNotFound
+	now := time.Now()
+
+	if err := uc.stateClient.Set(ctx, taskID.String(), searchKey, len(sources)); err != nil {
+		return nil, fmt.Errorf("%w: state set: %v", domain.ErrFailedToCreateTask, err)
 	}
 
+	var publishErrors []string
 	for _, source := range sources {
-		rKey := "scraper." + source
-
 		msg := outPkg.ScrapeTask{
 			ID:      taskID,
 			Keyword: keywords,
 			Source:  source,
 		}
 
-		if err := uc.broker.PublishTask(ctx, msg, rKey); err != nil {
-			uc.logger.Error("failed to send task", slog.String("source", source))
+		if err := uc.broker.PublishTask(ctx, msg, routingKeyPrefix+source); err != nil {
+			uc.logger.Error("failed to publish task",
+				slog.String("task_id", taskID.String()),
+				slog.String("source", source),
+				slog.Any("error", err),
+			)
+			publishErrors = append(publishErrors, source)
 		}
 	}
-
-	return &taskID, nil
+	if len(publishErrors) > 0 {
+		uc.logger.Warn("failed to publish to some sources",
+			slog.String("task_id", taskID.String()),
+			slog.Any("failed_sources", publishErrors),
+		)
+	}
+	return &outPkg.Task{
+		ID:        taskID,
+		Status:    "created",
+		CreatedAt: now,
+	}, nil
 }
 
 func (uc *CoordinatorInteractor) GetVacancies(ctx context.Context, filter outPkg.VacancyFilter) ([]*outPkg.Vacancy, int64, error) {
 	vacancies, err := uc.searchClient.GetVacancies(ctx, filter)
 	if err != nil {
-		uc.logger.Error("failed to search vacancies", slog.Any("error", err))
-		return nil, 0, domain.ErrSearchFailed
+		return nil, 0, fmt.Errorf("%w: %v", domain.ErrSearchFailed, err)
 	}
 	return vacancies, int64(len(vacancies)), nil
 }
 
 func (uc *CoordinatorInteractor) GetAvailableSources(ctx context.Context) ([]outPkg.Source, int64, error) {
-	// TODO: refactor
 	sources, err := uc.stateClient.GetSources(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("get available sources: %v", err)
+	}
 	return sources, int64(len(sources)), err
 }
 

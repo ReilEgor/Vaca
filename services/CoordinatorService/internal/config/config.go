@@ -1,31 +1,23 @@
 package config
 
-import "os"
-
 type (
-	StateClientAddr  string
-	SearchClientAddr string
+	StateClientAddr    string
+	SearchClientAddr   string
+	PublisherQueueName string
+	RabbitURL          string
 )
 
 type Config struct {
-	// REDIS
-	RedisHost     string
-	RedisPort     string
-	RedisPassword string
-}
+	// --- Infrastructure: Message Broker & Cache ---
+	RabbitURL     string `env:"RABBIT_URL" envDefault:"amqp://guest:guest@localhost:5672/"`
+	RedisHost     string `env:"REDIS_HOST" envDefault:"localhost"`
+	RedisPort     string `env:"REDIS_PORT" envDefault:"6379"`
+	RedisPassword string `env:"REDIS_PASSWORD" envDefault:""`
 
-func NewConfig() *Config {
-	return &Config{
-		// REDIS
-		RedisHost:     getEnv("REDIS_HOST", "localhost"),
-		RedisPort:     getEnv("REDIS_PORT", "6379"),
-		RedisPassword: getEnv("REDIS_PASSWORD", ""),
-	}
-}
+	// --- Internal Microservices (gRPC/HTTP Addresses) ---
+	SearchServiceAddress string `env:"SEARCH_SERVICE_ADDRESS" envDefault:"http://localhost:8082"`
+	StateServiceAddress  string `env:"STATE_SERVICE_ADDRESS" envDefault:"http://localhost:8081"`
 
-func getEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
+	// --- Server Settings ---
+	RestApiPort string `env:"HTTP_PORT" envDefault:"8080"`
 }

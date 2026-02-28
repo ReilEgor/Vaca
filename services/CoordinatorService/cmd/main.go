@@ -2,65 +2,71 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	_ "github.com/ReilEgor/Vaca/pkg"
 	outPkg "github.com/ReilEgor/Vaca/pkg"
-	rabbitmq "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/broker/rabbitmq"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/config"
 	_ "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest/handlers"
-	"github.com/joho/godotenv"
+	"github.com/caarlos0/env/v11"
 )
 
-// @title           Coordinator Service API
-// @version         1.0
-// @description     This is the Coordinator Service for the Vaca project.
-// @termsOfService  http://swagger.io/terms/
+const (
+	shutdownTimeout = 5 * time.Second
+)
 
-// @contact.name   Egor Reil
-// @contact.url    https://github.com/ReilEgor
-
-// @host      localhost:8080
-// @BasePath  /api/v1
-// @schemes   http https
-
-// @accept    json
-// @produce   json
 func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: slog.LevelDebug,
 	}))
-	if err := godotenv.Load(); err != nil {
-		slog.Warn("no .env file found, using system environment variables")
+
+	taskQueue := config.PublisherQueueName(outPkg.RabbitMQTaskQueue)
+
+	var cfg config.Config
+	err := env.Parse(&cfg)
+	if err != nil {
+		logger.Error("failed to parse environment variables", slog.Any("error", err))
+		os.Exit(1)
 	}
 
-	taskQueue := rabbitmq.PublisherQueueName(outPkg.RabbitMQTaskQueue)
-	rabbitURL := os.Getenv("RABBIT_URL")
-	searchServiceAddress := os.Getenv("SEARCH_SERVICE_ADDRESS")
-	stateServiceAddress := os.Getenv("STATE_SERVICE_ADDRESS")
-	app, cleanup, err := InitializeApp(rabbitmq.RabbitURL(rabbitURL), config.SearchClientAddr(searchServiceAddress), taskQueue, config.StateClientAddr(stateServiceAddress))
+	app, cleanup, err := InitializeApp(config.RabbitURL(cfg.RabbitURL), config.SearchClientAddr(cfg.SearchServiceAddress), taskQueue, config.StateClientAddr(cfg.StateServiceAddress))
 	if err != nil {
 		logger.Error("failed to initialize app", slog.Any("error", err))
 		os.Exit(1)
 	}
-	defer cleanup()
+	defer func() {
+		logger.Info("running cleanup...")
+		cleanup()
+	}()
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
+	serverErr := make(chan error, 1)
 	go func() {
-		port := os.Getenv("HTTP_PORT")
-		if port == "" {
-			port = "8080"
-		}
-		if err := app.Server.Run(":" + port); err != nil {
-			logger.Error("failed to start server", slog.Any("error", err))
+		if err := app.Server.Run(":" + cfg.RestApiPort); err != nil {
+			serverErr <- fmt.Errorf("server run: %w", err)
 		}
 	}()
 
-	<-ctx.Done()
-	logger.Info("shutting down gracefully")
+	select {
+	case <-ctx.Done():
+		logger.Info("shutdown signal received")
+	case err := <-serverErr:
+		logger.Error("server error", slog.Any("error", err))
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	if err := app.Server.Shutdown(shutdownCtx); err != nil {
+		logger.Error("graceful shutdown failed", slog.Any("error", err))
+		os.Exit(1)
+	}
+	logger.Info("server stopped gracefully")
 }
