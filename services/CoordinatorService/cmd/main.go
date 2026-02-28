@@ -43,7 +43,6 @@ func main() {
 		}
 		if err := app.Server.Run(":" + port); err != nil {
 			logger.Error("failed to start server", slog.Any("error", err))
-			os.Exit(1)
 		}
 	}()
 
