@@ -10,8 +10,8 @@ import (
 )
 
 type SourceResponse struct {
-	ID   uuid.UUID `json:"id" binding:"required"`
-	Name string    `json:"name" binding:"required"`
+	ID   uuid.UUID `json:"id" binding:"required" example:"1"`
+	Name string    `json:"name" binding:"required" example:"Dou.ua"`
 }
 
 type ListSourcesResponse struct {
@@ -19,6 +19,15 @@ type ListSourcesResponse struct {
 	Total   int64            `json:"total" binding:"required,gte=0"`
 }
 
+// GetAvailableSources godoc
+// @Summary      Get available sources
+// @Description  Returns a list of all available data sources including their IDs and names
+// @Tags         sources
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  ListSourcesResponse  "Successful response with source list"
+// @Failure      500  {object}  map[string]string    "Internal server error"
+// @Router       /sources [get]
 func (h *Handler) GetAvailableSources(c *gin.Context) {
 	ctx := c.Request.Context()
 

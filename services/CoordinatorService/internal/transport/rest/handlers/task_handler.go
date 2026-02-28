@@ -22,6 +22,17 @@ type CreateTaskResponse struct {
 	CreatedAt string    `json:"created_at" binding:"required"`
 }
 
+// GetTaskStatus godoc
+// @Summary      Get status of a specific task
+// @Description  Retrieve the current processing status and metadata for a task by its UUID
+// @Tags         tasks
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "Task ID (UUID)"
+// @Success      200  {object}  CreateTaskResponse
+// @Failure      400  {object}  map[string]string "Task ID is required"
+// @Failure      404  {object}  map[string]string "Task not found"
+// @Router       /tasks/{id} [get]
 func (h *Handler) GetTaskStatus(c *gin.Context) {
 	taskID := c.Param("id")
 	if taskID == "" {
@@ -44,6 +55,17 @@ func (h *Handler) GetTaskStatus(c *gin.Context) {
 	})
 }
 
+// CreateTask godoc
+// @Summary      Create a new processing task
+// @Description  Submit keywords and sources to initiate a new background task
+// @Tags         tasks
+// @Accept       json
+// @Produce      json
+// @Param        request  body      CreateTaskRequest  true  "Task Creation Details"
+// @Success      201      {object}  CreateTaskResponse
+// @Failure      400      {object}  map[string]string  "Invalid request body"
+// @Failure      500      {object}  map[string]string  "Internal server error"
+// @Router       /tasks [post]
 func (h *Handler) CreateTask(c *gin.Context) {
 	var req CreateTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

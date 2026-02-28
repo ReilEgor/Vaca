@@ -11,9 +11,24 @@ import (
 	outPkg "github.com/ReilEgor/Vaca/pkg"
 	rabbitmq "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/broker/rabbitmq"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/config"
+	_ "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest/handlers"
 	"github.com/joho/godotenv"
 )
 
+// @title           Coordinator Service API
+// @version         1.0
+// @description     This is the Coordinator Service for the Vaca project.
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   Egor Reil
+// @contact.url    https://github.com/ReilEgor
+
+// @host      localhost:8080
+// @BasePath  /api/v1
+// @schemes   http https
+
+// @accept    json
+// @produce   json
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,

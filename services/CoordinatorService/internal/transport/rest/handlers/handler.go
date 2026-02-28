@@ -5,6 +5,8 @@ import (
 
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type Handler struct {
@@ -20,6 +22,7 @@ func NewHandler(uc domain.CoordinatorUsecase) *Handler {
 }
 
 func (h *Handler) InitRoutes(router *gin.Engine) {
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	api := router.Group("/api/v1")
 	{
 		tasks := api.Group("/tasks")

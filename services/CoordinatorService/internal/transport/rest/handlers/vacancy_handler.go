@@ -27,6 +27,17 @@ type SearchVacanciesResponse struct {
 	Total int64             `json:"total" binding:"required,gte=0"`
 }
 
+// GetVacancies godoc
+// @Summary      Search and filter vacancies
+// @Description  Retrieve a paginated list of vacancies based on filters like title, company, or location
+// @Tags         vacancies
+// @Accept       json
+// @Produce      json
+// @Param        filter  query     outPkg.VacancyFilter  true  "Vacancy filter parameters"
+// @Success      200     {object}  SearchVacanciesResponse
+// @Failure      400     {object}  map[string]string "Invalid query parameters"
+// @Failure      500     {object}  map[string]string "Internal server error"
+// @Router       /vacancies [get]
 func (h *Handler) GetVacancies(c *gin.Context) {
 	var filter outPkg.VacancyFilter
 
