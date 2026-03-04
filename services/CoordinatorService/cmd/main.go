@@ -2,71 +2,67 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	_ "github.com/ReilEgor/Vaca/pkg"
 	outPkg "github.com/ReilEgor/Vaca/pkg"
+	_ "github.com/ReilEgor/Vaca/services/CoordinatorService/docs"
+	rabbitmq "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/broker/rabbitmq"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/config"
-	_ "github.com/ReilEgor/Vaca/services/CoordinatorService/internal/transport/rest/handlers"
-	"github.com/caarlos0/env/v11"
+	"github.com/joho/godotenv"
 )
 
-const (
-	shutdownTimeout = 5 * time.Second
-)
+// @title           Vaca Coordinator API
+// @version         1.0
+// @description     API Server for Job Aggregator Coordinator Service.
+// @termsOfService  http://swagger.io/terms/
 
+// @contact.name   Yehor Reil
+// @contact.url    https://github.com/ReilEgor
+
+// @host      localhost
+// @BasePath  /api/v1
+
+// @securityDefinitions.apikey  ApiKeyAuth
+// @in                          header
+// @name                        Authorization
+// @description                 Description for "Bearer <token>"
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: slog.LevelInfo,
 	}))
-
-	taskQueue := config.PublisherQueueName(outPkg.RabbitMQTaskQueue)
-
-	var cfg config.Config
-	err := env.Parse(&cfg)
-	if err != nil {
-		logger.Error("failed to parse environment variables", slog.Any("error", err))
-		os.Exit(1)
+	if err := godotenv.Load(); err != nil {
+		slog.Warn("no .env file found, using system environment variables")
 	}
 
-	app, cleanup, err := InitializeApp(config.RabbitURL(cfg.RabbitURL), config.SearchClientAddr(cfg.SearchServiceAddress), taskQueue, config.StateClientAddr(cfg.StateServiceAddress))
+	taskQueue := rabbitmq.PublisherQueueName(outPkg.RabbitMQTaskQueue)
+	rabbitURL := os.Getenv("RABBIT_URL")
+	searchServiceAddress := os.Getenv("SEARCH_SERVICE_ADDRESS")
+	stateServiceAddress := os.Getenv("STATE_SERVICE_ADDRESS")
+	app, cleanup, err := InitializeApp(rabbitmq.RabbitURL(rabbitURL), config.SearchClientAddr(searchServiceAddress), taskQueue, config.StateClientAddr(stateServiceAddress))
 	if err != nil {
 		logger.Error("failed to initialize app", slog.Any("error", err))
 		os.Exit(1)
 	}
-	defer func() {
-		logger.Info("running cleanup...")
-		cleanup()
-	}()
+	defer cleanup()
 
-	serverErr := make(chan error, 1)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	go func() {
-		if err := app.Server.Run(":" + cfg.RestApiPort); err != nil {
-			serverErr <- fmt.Errorf("server run: %w", err)
+		port := os.Getenv("HTTP_PORT")
+		if port == "" {
+			port = "8080"
+		}
+		if err := app.Server.Run(":" + port); err != nil {
+			logger.Error("failed to start server", slog.Any("error", err))
+			os.Exit(1)
 		}
 	}()
 
-	select {
-	case <-ctx.Done():
-		logger.Info("shutdown signal received")
-	case err := <-serverErr:
-		logger.Error("server error", slog.Any("error", err))
-	}
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
-	if err := app.Server.Shutdown(shutdownCtx); err != nil {
-		logger.Error("graceful shutdown failed", slog.Any("error", err))
-		os.Exit(1)
-	}
-	logger.Info("server stopped gracefully")
+	<-ctx.Done()
+	logger.Info("shutting down gracefully")
 }

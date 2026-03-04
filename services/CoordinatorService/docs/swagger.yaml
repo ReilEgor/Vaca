@@ -1,0 +1,243 @@
+basePath: /api/v1
+definitions:
+  internal_transport_rest_handlers.CreateTaskRequest:
+    properties:
+      keywords:
+        items:
+          type: string
+        type: array
+      sources:
+        items:
+          type: string
+        type: array
+    required:
+    - keywords
+    - sources
+    type: object
+  internal_transport_rest_handlers.CreateTaskResponse:
+    properties:
+      created_at:
+        type: string
+      status:
+        type: string
+      task_id:
+        type: string
+    required:
+    - created_at
+    - status
+    - task_id
+    type: object
+  internal_transport_rest_handlers.ListSourcesResponse:
+    properties:
+      sources:
+        items:
+          $ref: '#/definitions/internal_transport_rest_handlers.SourceResponse'
+        type: array
+      total:
+        minimum: 0
+        type: integer
+    required:
+    - sources
+    - total
+    type: object
+  internal_transport_rest_handlers.SearchVacanciesResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_transport_rest_handlers.VacancyResponse'
+        type: array
+      total:
+        minimum: 0
+        type: integer
+    required:
+    - items
+    - total
+    type: object
+  internal_transport_rest_handlers.SourceResponse:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    required:
+    - id
+    - name
+    type: object
+  internal_transport_rest_handlers.VacancyResponse:
+    properties:
+      about:
+        type: string
+      company:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      link:
+        type: string
+      location:
+        type: string
+      requirements:
+        type: string
+      salary:
+        type: string
+      title:
+        minLength: 3
+        type: string
+    required:
+    - about
+    - company
+    - id
+    - link
+    - requirements
+    - title
+    type: object
+host: localhost
+info:
+  contact:
+    name: Yehor Reil
+    url: https://github.com/ReilEgor
+  description: API Server for Job Aggregator Coordinator Service.
+  termsOfService: http://swagger.io/terms/
+  title: Vaca Coordinator API
+  version: "1.0"
+paths:
+  /sources:
+    get:
+      description: Retrieve a list of all job boards and platforms supported by the
+        aggregator
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_rest_handlers.ListSourcesResponse'
+        "500":
+          description: Internal server error with domain.ErrFailedToGetSources
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all available job sources
+      tags:
+      - sources
+  /tasks:
+    post:
+      consumes:
+      - application/json
+      description: Initialize a job search process across multiple sources using specific
+        keywords
+      parameters:
+      - description: Task Configuration
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/internal_transport_rest_handlers.CreateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_transport_rest_handlers.CreateTaskResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new scraping task
+      tags:
+      - tasks
+  /tasks/{id}:
+    get:
+      description: Retrieve the current progress and status of a specific task by
+        its UUID
+      parameters:
+      - description: Task ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_rest_handlers.CreateTaskResponse'
+        "400":
+          description: Task ID is required
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Task not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get status of a scraping task
+      tags:
+      - tasks
+  /vacancies:
+    get:
+      description: Get a paginated list of job vacancies filtered by title, source,
+        or keywords
+      parameters:
+      - description: Search by job title
+        in: query
+        name: title
+        type: string
+      - description: Filter by job source (e.g., djinni, dou)
+        in: query
+        name: source
+        type: string
+      - default: 10
+        description: Number of items to return
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Number of items to skip
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_rest_handlers.SearchVacanciesResponse'
+        "400":
+          description: Invalid query parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Search and filter vacancies
+      tags:
+      - vacancies
+securityDefinitions:
+  ApiKeyAuth:
+    description: Description for "Bearer <token>"
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

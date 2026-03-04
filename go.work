@@ -1,11 +1,10 @@
-go 1.24.4
-
+go 1.25.0
 use (
-    ./services/CoordinatorService
-    ./services/DataProcessorService
 	./pkg
+	services/CoordinatorService
+	services/DataProcessorService
 	services/DouScraper
-	services/StateService
-	services/SearchService
 	services/NotificationService
+	services/SearchService
+	services/StateService
 )

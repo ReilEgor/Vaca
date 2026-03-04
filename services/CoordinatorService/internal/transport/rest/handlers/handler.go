@@ -5,6 +5,8 @@ import (
 
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type Handler struct {
@@ -12,32 +14,25 @@ type Handler struct {
 	logger *slog.Logger
 }
 
-const (
-	componentHandler = "handler"
-
-	routeAPIV1            = "/api/v1"
-	routeTasks            = "/tasks"
-	routeTaskByID         = "/:id"
-	routeVacancies        = "/vacancies"
-	routeAvailableSources = "/sources"
-)
-
 func NewHandler(uc domain.CoordinatorUsecase) *Handler {
 	return &Handler{
 		uc:     uc,
-		logger: slog.With(slog.String("component", componentHandler)),
+		logger: slog.With(slog.String("component", "handler")),
 	}
 }
 
 func (h *Handler) InitRoutes(router *gin.Engine) {
-	api := router.Group(routeAPIV1)
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	api := router.Group("/api/v1")
 	{
-		tasks := api.Group(routeTasks)
+		tasks := api.Group("/tasks")
 		{
 			tasks.POST("/", h.CreateTask)
-			tasks.GET(routeTaskByID, h.GetTaskStatus)
+			tasks.GET("/:id", h.GetTaskStatus)
 		}
-		api.GET(routeVacancies, h.GetVacancies)
-		api.GET(routeAvailableSources, h.GetAvailableSources)
+
+		api.GET("/vacancies", h.GetVacancies)
+		api.GET("/sources", h.GetAvailableSources)
+
 	}
 }

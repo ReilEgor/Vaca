@@ -1,6 +1,6 @@
 module github.com/ReilEgor/Vaca/services/SearchService
 
-go 1.24.4
+go 1.25.0
 
 require (
 	github.com/ReilEgor/Vaca/pkg v0.0.0-20260203223439-869310cf3627

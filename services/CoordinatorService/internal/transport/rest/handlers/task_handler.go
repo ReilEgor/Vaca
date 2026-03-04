@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -18,42 +17,54 @@ type CreateTaskRequest struct {
 }
 
 type CreateTaskResponse struct {
-	Task      *outPkg.Task `json:"task" binding:"required"`
-	Status    string       `json:"status" binding:"required"`
-	CreatedAt string       `json:"created_at" binding:"required"`
+	TaskID    uuid.UUID `json:"task_id" binding:"required"`
+	Status    string    `json:"status" binding:"required"`
+	CreatedAt string    `json:"created_at" binding:"required"`
 }
 
-const (
-	taskStatusCreated = "created"
-)
-
+// GetTaskStatus godoc
+// @Summary      Get status of a scraping task
+// @Description  Retrieve the current progress and status of a specific task by its UUID
+// @Tags         tasks
+// @Produce      json
+// @Param        id   path      string  true  "Task ID (UUID)"
+// @Success      200  {object}  CreateTaskResponse
+// @Failure      400  {object}  map[string]string "Task ID is required"
+// @Failure      404  {object}  map[string]string "Task not found"
+// @Router       /tasks/{id} [get]
 func (h *Handler) GetTaskStatus(c *gin.Context) {
 	taskID := c.Param("id")
-	if _, err := uuid.Parse(taskID); err != nil {
+	if taskID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": outPkg.ErrTaskIDRequired.Error()})
 		return
 	}
 
-	task, err := h.uc.GetTaskStatus(c.Request.Context(), taskID)
+	ctx := c.Request.Context()
+
+	task, err := h.uc.GetTaskStatus(ctx, taskID)
 	if err != nil {
-		if errors.Is(err, domain.ErrTaskNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": domain.ErrTaskNotFound.Error()})
-			return
-		}
-		h.logger.Error("failed to get task status",
-			slog.String("task_id", taskID),
-			slog.Any("error", err),
-		)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": domain.ErrFailedToGetTask.Error()})
+		h.logger.Error("failed to get task status", slog.String("id", taskID), slog.Any("error", err))
+		c.JSON(http.StatusNotFound, gin.H{"error": domain.ErrTaskNotFound.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, CreateTaskResponse{
-		Task:      task,
+		TaskID:    task.ID,
 		Status:    task.Status,
 		CreatedAt: task.CreatedAt.Format(time.RFC3339),
 	})
 }
 
+// CreateTask godoc
+// @Summary      Create a new scraping task
+// @Description  Initialize a job search process across multiple sources using specific keywords
+// @Tags         tasks
+// @Accept       json
+// @Produce      json
+// @Param        input  body      CreateTaskRequest  true  "Task Configuration"
+// @Success      201    {object}  CreateTaskResponse
+// @Failure      400    {object}  map[string]string "Invalid request body"
+// @Failure      500    {object}  map[string]string "Internal server error"
+// @Router       /tasks [post]
 func (h *Handler) CreateTask(c *gin.Context) {
 	var req CreateTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -62,7 +73,9 @@ func (h *Handler) CreateTask(c *gin.Context) {
 		return
 	}
 
-	task, err := h.uc.CreateTask(c.Request.Context(), req.Keywords, req.Sources)
+	ctx := c.Request.Context()
+
+	taskID, err := h.uc.CreateTask(ctx, req.Keywords, req.Sources)
 	if err != nil {
 		h.logger.Error("failed to create task", slog.Any("error", err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": domain.ErrFailedToCreateTask.Error()})
@@ -70,7 +83,7 @@ func (h *Handler) CreateTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, CreateTaskResponse{
-		Task:      task,
+		TaskID:    *taskID,
 		Status:    "created",
 		CreatedAt: time.Now().Format(time.RFC3339),
 	})

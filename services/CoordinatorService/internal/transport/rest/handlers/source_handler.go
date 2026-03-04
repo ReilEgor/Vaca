@@ -4,15 +4,14 @@ import (
 	"log/slog"
 	"net/http"
 
-	outPkg "github.com/ReilEgor/Vaca/pkg"
 	"github.com/ReilEgor/Vaca/services/CoordinatorService/internal/domain"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type SourceResponse struct {
-	ID   uuid.UUID `json:"id" binding:"required" example:"1"`
-	Name string    `json:"name" binding:"required" example:"Dou.ua"`
+	ID   uuid.UUID `json:"id" binding:"required"`
+	Name string    `json:"name" binding:"required"`
 }
 
 type ListSourcesResponse struct {
@@ -20,27 +19,34 @@ type ListSourcesResponse struct {
 	Total   int64            `json:"total" binding:"required,gte=0"`
 }
 
+// GetAvailableSources godoc
+// @Summary      Get all available job sources
+// @Description  Retrieve a list of all job boards and platforms supported by the aggregator
+// @Tags         sources
+// @Produce      json
+// @Success      200  {object}  ListSourcesResponse
+// @Failure      500  {object}  map[string]string "Internal server error with domain.ErrFailedToGetSources"
+// @Router       /sources [get]
 func (h *Handler) GetAvailableSources(c *gin.Context) {
-	sources, total, err := h.uc.GetAvailableSources(c.Request.Context())
+	ctx := c.Request.Context()
+
+	sources, total, err := h.uc.GetAvailableSources(ctx)
 	if err != nil {
 		h.logger.Error("failed to get available sources", slog.Any("error", err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": domain.ErrFailedToGetSources.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, ListSourcesResponse{
-		Sources: mapSourcesToResponse(sources),
-		Total:   total,
-	})
-}
-
-func mapSourcesToResponse(sources []outPkg.Source) []SourceResponse {
-	result := make([]SourceResponse, len(sources))
+	respSources := make([]SourceResponse, len(sources))
 	for i, s := range sources {
-		result[i] = SourceResponse{
+		respSources[i] = SourceResponse{
 			ID:   s.ID,
 			Name: s.Name,
 		}
 	}
-	return result
+
+	c.JSON(http.StatusOK, ListSourcesResponse{
+		Sources: respSources,
+		Total:   total,
+	})
 }

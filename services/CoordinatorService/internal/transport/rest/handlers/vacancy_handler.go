@@ -27,40 +27,52 @@ type SearchVacanciesResponse struct {
 	Total int64             `json:"total" binding:"required,gte=0"`
 }
 
+// GetVacancies godoc
+// @Summary      Search and filter vacancies
+// @Description  Get a paginated list of job vacancies filtered by title, source, or keywords
+// @Tags         vacancies
+// @Produce      json
+// @Param        title     query     string  false  "Search by job title"
+// @Param        source    query     string  false  "Filter by job source (e.g., djinni, dou)"
+// @Param        limit     query     int     false  "Number of items to return" default(10)
+// @Param        offset    query     int     false  "Number of items to skip" default(0)
+// @Success      200       {object}  SearchVacanciesResponse
+// @Failure      400       {object}  map[string]string "Invalid query parameters"
+// @Failure      500       {object}  map[string]string "Internal server error"
+// @Router       /vacancies [get]
 func (h *Handler) GetVacancies(c *gin.Context) {
 	var filter outPkg.VacancyFilter
+
 	if err := c.ShouldBindQuery(&filter); err != nil {
-		h.logger.Warn("invalid vacancies filter", slog.Any("error", err))
+		h.logger.Warn("invalid request body", slog.Any("error", err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": domain.ErrInvalidRequestBody.Error()})
 		return
 	}
+	ctx := c.Request.Context()
 
-	vacancies, total, err := h.uc.GetVacancies(c.Request.Context(), filter)
+	vacancies, quantity, err := h.uc.GetVacancies(ctx, filter)
 	if err != nil {
 		h.logger.Error("failed to get vacancies", slog.Any("error", err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": domain.ErrFailedToGetVacancies.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, SearchVacanciesResponse{
-		Items: mapVacanciesToResponse(vacancies),
-		Total: total,
-	})
-}
-
-func mapVacanciesToResponse(vacancies []*outPkg.Vacancy) []VacancyResponse {
-	result := make([]VacancyResponse, len(vacancies))
+	respItems := make([]VacancyResponse, len(vacancies))
 	for i, v := range vacancies {
-		result[i] = VacancyResponse{
+		respItems[i] = VacancyResponse{
 			ID:           v.ID,
 			Title:        v.Title,
 			Company:      v.Company,
 			Salary:       v.Salary,
+			Link:         v.Link,
 			Location:     v.Location,
 			Description:  v.Description,
-			Link:         v.Link,
 			About:        v.About,
 			Requirements: v.Requirements,
 		}
 	}
-	return result
+
+	c.JSON(http.StatusOK, SearchVacanciesResponse{
+		Items: respItems,
+		Total: quantity,
+	})
 }
