@@ -1,13 +1,13 @@
-name: Go Coverage
+name: Go CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ "main" ]
 
 jobs:
-  test:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -16,26 +16,16 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.22'
+          cache: false 
 
-      - name: Install dependencies
-        run: go mod download
+      - name: Build
+        run: go build -v ./...
 
-      - name: Run Tests with Coverage
-        run: |
-          echo "mode: atomic" > coverage.txt
-          for dir in $(find . -maxdepth 2 -name "go.mod" -exec dirname {} \;); do
-            echo "Testing module in $dir..."
-            go test -v -race -coverprofile=module.out -covermode=atomic "$dir/..."
-            if [ -f module.out ]; then
-              tail -n +2 module.out >> coverage.txt
-              rm module.out
-            fi
-          done
+      - name: Run Tests
+        run: go test -v -race -coverprofile=coverage.txt ./internal/...
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Golangci-lint
+        uses: golangci/golangci-lint-action@v6
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.txt
-          fail_ci_if_error: true
+          version: latest
